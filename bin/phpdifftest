@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+
+include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+
+$diffTest = new \BrianHenryIE\PhpDiffTest\DiffTest();
+
+$projectRootDir = getcwd();
+
+$diffTest->run( $projectRootDir );

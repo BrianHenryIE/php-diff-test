@@ -1,0 +1,43 @@
+{
+  "name": "brianhenryie/php-diff-test",
+  "description": "Run only the tests that apply to changed lines.",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "BrianHenryIE",
+      "email": "BrianHenryIE@gmail.com"
+    }
+  ],
+  "bin": [
+    "bin/phpdifftest"
+  ],
+  "autoload":{
+    "psr-4": {
+      "BrianHenryIE\\PhpDiffTest\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "classmap": ["tests"]
+  },
+  "require": {
+    "composer-runtime-api": "^2.2",
+    "phpunit/php-code-coverage": "*",
+    "phpunit/phpunit": "*"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "*",
+    "phpstan/phpstan": "^1.9"
+  },
+  "scripts": {
+    "lint": [
+      "vendor/bin/phpcbf || true",
+      "vendor/bin/phpcs || true",
+      "vendor/bin/phpstan analyse --memory-limit 1G"
+    ]
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}
