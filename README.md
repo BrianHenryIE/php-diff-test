@@ -25,9 +25,9 @@ Obviously, it's assumed you're working inside a Git repo and have previously gen
 
 ## TODO
 
-* I think the diff doesn't track unstaged/committed files which could have code coverage
+* I think the diff doesn't track unstaged/uncommitted files which could have code coverage
 * Also run tests changed in the diff / run all tests changed since the code coverage was generated (merge/increment coverage?)
-* Allow specifying a hash to diff with
-* https://github.com/sebastianbergmann/php-code-coverage/issues/571
-* Tidy up the code
+* Allow specifying a hash to diff with – i.e. make pull requests run faster
+* https://github.com/sebastianbergmann/php-code-coverage/issues/571 – code coverage annotations make this tool less thorough 
+* Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect
 * Tests!
