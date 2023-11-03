@@ -5,7 +5,6 @@ Run only the tests that cover lines that have been changed.
 ## Install
 
 ```
-composer config repositories.brianhenryie/php-diff-test git https://github.com/brianhenryie/php-diff-test
 composer require --dev brianhenryie/php-diff-test
 ```
 
