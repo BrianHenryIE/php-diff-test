@@ -26,9 +26,10 @@
   "require": {
     "php": ">=8.1",
     "composer-runtime-api": "^2.2",
+    "gitonomy/gitlib": "^1.4",
     "phpunit/php-code-coverage": "*",
     "phpunit/phpunit": "*",
-    "gitonomy/gitlib": "^1.4"
+    "symfony/console": "^6.4"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "*",
