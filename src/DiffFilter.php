@@ -29,7 +29,7 @@ class DiffFilter
             $coverageSuiteNamesFilePaths[$name] = $filePath;
         }
 
-        $diffLines = new DiffLines();
+        $diffLines = new DiffLines($projectRootDir);
         $diffFilesLineRanges = $diffLines->getChangedLines($projectRootDir);
 
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite($coverageSuiteNamesFilePaths, $diffFilesLineRanges);
