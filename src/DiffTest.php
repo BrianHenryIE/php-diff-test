@@ -2,7 +2,6 @@
 
 namespace BrianHenryIE\PhpDiffTest;
 
-use Exception;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 
 class DiffTest
@@ -24,48 +23,16 @@ class DiffTest
         /** @var array<string,string> $coverageSuiteNamesFilePaths The coverage file paths indexed by the presumed suite name. */
         $coverageSuiteNamesFilePaths = array();
         foreach ($coverageFilePath as $filePath) {
+            // TODO: This is bad if multiple .cov have the same name in different directories.
             preg_match('/.*\/(.*).cov/', $filePath, $outputArray);
             $name = $outputArray[1];
             $coverageSuiteNamesFilePaths[$name] = $filePath;
         }
 
-        $changedFilesAll = $this->getChangedFiles($projectRootDir);
-        $changedFiles = array_filter($changedFilesAll, function (string $filePath): bool {
-            return substr($filePath, -4) === '.php';
-        });
-        $diffFilesLines   = $this->getChangedLinesPerFile($projectRootDir, $changedFiles);
+        $diffLines = new DiffLines();
+        $diffFilesLineRanges = $diffLines->getChangedLines($projectRootDir);
 
-        $fqdnTestsToRunBySuite = array();
-
-        foreach ($coverageSuiteNamesFilePaths as $suiteName => $coverageFilePath) {
-            $fqdnTestsToRunBySuite[$suiteName] = array();
-
-            /** @var CodeCoverage $coverage */
-            $coverage = include $coverageFilePath;
-
-            $srcFilesAbsolutePaths = array_keys($diffFilesLines);
-
-            $fqdnTestClassesAndMethods   = array();
-            $fqdnTestClassesAndFilepaths = array();
-            $fqdnTestClassesAndShortname = array();
-
-            $lineCoverage = $coverage->getData()->lineCoverage();
-            foreach ($srcFilesAbsolutePaths as $srcAbspath) {
-                if (! isset($lineCoverage[ $srcAbspath ])) {
-                    continue;
-                }
-                foreach ($lineCoverage[ $srcAbspath ] as $lineNumber => $tests) {
-                    if (in_array($lineNumber, $diffFilesLines[ $srcAbspath ])) {
-                        /**
-                         * @var string $test is the FQDN string of the test for this line number
-                         */
-                        foreach ($tests as $test) {
-                            $fqdnTestsToRunBySuite[$suiteName][] = $test;
-                        }
-                    }
-                }
-            }
-        }
+        $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite($coverageSuiteNamesFilePaths, $diffFilesLineRanges);
 
         if ($this->isCodeceptionRun($projectRootDir, array_keys($coverageSuiteNamesFilePaths))) {
             // codecept run wpunit ":API_WPUnit_Test:test_add_autologin_to_message"
@@ -91,7 +58,7 @@ class DiffTest
         }
     }
 
-    private function isCodeceptionRun($projectRootDir, $coverageSuiteNames)
+    private function isCodeceptionRun(string $projectRootDir, array $coverageSuiteNames): bool
     {
         return !empty(array_intersect(
             array_keys($this->getCodeceptionSuites($projectRootDir)),
@@ -111,102 +78,70 @@ class DiffTest
         return $codeceptionSuites;
     }
 
+    /**
+     * @param array $coverageSuiteNamesFilePaths
+     * @param array $fqdnTestsToRunBySuite
+     * @param array<string, array<int[]>> $diffFilesLineRanges
+     * @return array
+     */
+    public function getFqdnTestsToRunBySuite(array $coverageSuiteNamesFilePaths, array $diffFilesLineRanges): array
+    {
+        $fqdnTestsToRunBySuite = array();
+        foreach ($coverageSuiteNamesFilePaths as $suiteName => $coverageFilePath) {
+            $fqdnTestsToRunBySuite[$suiteName] = array();
+
+            /** @var CodeCoverage $coverage */
+            $coverage = include $coverageFilePath;
+
+            $srcFilesAbsolutePaths = array_keys($diffFilesLineRanges);
+
+            $fqdnTestClassesAndMethods = array();
+            $fqdnTestClassesAndFilepaths = array();
+            $fqdnTestClassesAndShortname = array();
+
+            $lineCoverage = $coverage->getData()->lineCoverage();
+
+
+
+            foreach ($srcFilesAbsolutePaths as $srcAbspath) {
+                if (!isset($lineCoverage[$srcAbspath])) {
+                    continue;
+                }
+                foreach ($lineCoverage[$srcAbspath] as $lineNumber => $tests) {
+                    if ($this->isNumberInRanges($lineNumber, $diffFilesLineRanges[$srcAbspath])) {
+                        /**
+                         * @var string $test is the FQDN string of the test for this line number
+                         */
+                        foreach ($tests as $test) {
+                            $fqdnTestsToRunBySuite[$suiteName][] = $test;
+                        }
+                    }
+                }
+            }
+        }
+        return $fqdnTestsToRunBySuite; // array($suiteName, $fqdnTestsToRunBySuite, $tests);
+    }
+
+    protected function isNumberInRanges(int $number, array $ranges): bool
+    {
+        foreach ($ranges as $range) {
+            if ($this->isNumberInRange($number, $range)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    protected function isNumberInRange(int $number, array $range): bool
+    {
+        return $number >= $range[0] && $number <= $range[1];
+    }
+
     private function fqdnToCodeceptionFriendlyShortname(string $test)
     {
         list( $testFqdnClassName, $testMethod ) = explode('::', $test);
         $parts = explode('\\', $testFqdnClassName);
         $shortClass = array_pop($parts);
         return $shortClass . ':' . $testMethod;
-    }
-
-    /**
-     * Returns a list of files which are within the diff based on the current branch
-     *
-     * Get a list of changed files (not including deleted files)
-     *
-     * @see https://github.com/olivertappin/phpcs-diff/blob/master/src/PhpcsDiff.php
-     *
-     * @return string[] List of absolute filepaths for files known to exist.
-     * @throws Exception When `shell_exec()` fails.
-     */
-    private function getChangedFiles($dir): array
-    {
-        $cmd = 'cd ' . $dir . ' && git diff --name-only --diff-filter=ACM';
-
-        $shellOutput = shell_exec($cmd);
-
-        if (empty($shellOutput)) {
-            throw new Exception("shell_exec failed running `$cmd`.");
-        }
-
-        /**
-         * Convert files into an array.
-         *
-         * @var string[] $output
-         */
-        $relativeFilepaths = explode(PHP_EOL, $shellOutput);
-
-        // Prepend $dir to get absolute path.
-        $absoluteFilepaths = array_map(function ($path) use ($dir): string {
-            return $dir . '/' . $path;
-        }, $relativeFilepaths);
-
-        // Remove any invalid values.
-        return array_filter($absoluteFilepaths, function (string $maybeFile): bool {
-            return file_exists($maybeFile);
-        });
-    }
-
-    /**
-     * Extract the changed lines for each file from the git diff output
-     *
-     * @see https://github.com/olivertappin/phpcs-diff/blob/master/src/PhpcsDiff.php
-     *
-     * @param string[] $files
-     *
-     * @return array<string, int[]>
-     */
-    private function getChangedLinesPerFile(string $dir, array $files): array
-    {
-        $extract = [];
-        $pattern = [
-            'basic'    => '^@@ (.*) @@',
-            'specific' => '@@ -[0-9]+(?:,[0-9]+)? \+([0-9]+)(?:,([0-9]+))? @@',
-        ];
-
-        foreach ($files as $file) {
-            $command = 'cd ' . $dir . ' && git diff -U0 ' . $file .
-                       ' | grep -E ' . escapeshellarg($pattern['basic']);
-
-            $lineDiff     = shell_exec($command);
-            $lines        = array_filter(explode(PHP_EOL, $lineDiff));
-            $linesChanged = [];
-
-            foreach ($lines as $line) {
-                preg_match('/' . $pattern['specific'] . '/', $line, $matches);
-
-                // If there were no specific matches, skip this line
-                if ([] === $matches) {
-                    continue;
-                }
-
-                $start = $end = (int) $matches[1];
-
-                // Multiple lines were changed, so we need to calculate the end line
-                if (isset($matches[2])) {
-                    $length = (int) $matches[2];
-                    $end    = $start + $length - 1;
-                }
-
-                foreach (range($start, $end) as $l) {
-                    $linesChanged[ $l ] = null;
-                }
-            }
-
-            $extract[ $file ] = array_keys($linesChanged);
-        }
-
-        return $extract;
     }
 
     /**
