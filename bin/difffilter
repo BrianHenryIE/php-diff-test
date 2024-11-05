@@ -1,13 +1,16 @@
 #!/usr/bin/env php
 <?php
 /**
- * Prints a filter to use with PHPUnit or CodeCeption based on what test cases cover the files changed in a diff.
+ * Prints a filter to use with PHPUnit or Codeception based on what test cases cover the files changed in a diff.
+ *
+ * `difffilter --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^`
  */
 
 include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
-$diffTest = new \BrianHenryIE\PhpDiffTest\DiffFilter();
+use Symfony\Component\Console\Application;
 
-$projectRootDir = getcwd();
-
-$diffTest->run( $projectRootDir );
+$application = new Application();
+$application->add(new \BrianHenryIE\PhpDiffTest\DiffFilterCLI());
+$application->setDefaultCommand('difffilter', true);
+$application->run();

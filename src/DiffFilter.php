@@ -6,35 +6,36 @@ use SebastianBergmann\CodeCoverage\CodeCoverage;
 
 class DiffFilter
 {
-    public function run($projectRootDir)
+    private DiffLines $diffLines;
+
+    public function __construct(
+        protected string $cwd, // Current working directory, with trailing slash.
+        ?DiffLines $diffLines = null,
+    ) {
+        $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
+    }
+
+    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo): void
     {
         // Search $projectRootDir and two levels of tests for *.cov
         // If there are corresponding *.suite.yml, treat them as Codeception
         // otherwise treat them as PhpUnit.
 
-        $coverageFilePath = $this->getCodeCoverageFilepaths($projectRootDir);
-
-        // This happens after `codecept clean`.
-        if (empty($coverageFilePath)) {
-            error_log('No code coverage files found.');
-            return 1;
-        }
 
         /** @var array<string,string> $coverageSuiteNamesFilePaths The coverage file paths indexed by the presumed suite name. */
         $coverageSuiteNamesFilePaths = array();
-        foreach ($coverageFilePath as $filePath) {
+        foreach ($coverageFilePaths as $filePath) {
             // TODO: This is bad if multiple .cov have the same name in different directories.
             preg_match('/.*\/(.*).cov/', $filePath, $outputArray);
             $name = $outputArray[1];
             $coverageSuiteNamesFilePaths[$name] = $filePath;
         }
 
-        $diffLines = new DiffLines($projectRootDir);
-        $diffFilesLineRanges = $diffLines->getChangedLines($projectRootDir);
+        $diffFilesLineRanges = $this->diffLines->getChangedLines($diffFrom, $diffTo);
 
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite($coverageSuiteNamesFilePaths, $diffFilesLineRanges);
 
-        if ($this->isCodeceptionRun($projectRootDir, array_keys($coverageSuiteNamesFilePaths))) {
+        if ($this->isCodeceptionRun($this->cwd, array_keys($coverageSuiteNamesFilePaths))) {
             // codecept run wpunit ":API_WPUnit_Test:test_add_autologin_to_message"
             $classnameTestsToRunBySuite = array();
             foreach ($fqdnTestsToRunBySuite as $suiteName => $tests) {
@@ -66,7 +67,11 @@ class DiffFilter
         ));
     }
 
-    private function getCodeceptionSuites(string $projectRootDir)
+    /**
+     * @param string $projectRootDir
+     * @return array<string,string> <suite name, filepath>
+     */
+    private function getCodeceptionSuites(string $projectRootDir): array
     {
         $codeceptionSuites      = array();
         $codeceptionSuitesFiles = glob($projectRootDir . '/tests/*.suite.y*ml');
@@ -122,6 +127,10 @@ class DiffFilter
         return $fqdnTestsToRunBySuite; // array($suiteName, $fqdnTestsToRunBySuite, $tests);
     }
 
+    /**
+     * @param int $number
+     * @param array<array{0:int, 1:int}> $ranges
+     */
     protected function isNumberInRanges(int $number, array $ranges): bool
     {
         foreach ($ranges as $range) {
@@ -131,30 +140,21 @@ class DiffFilter
         }
         return false;
     }
+
+    /**
+     * @param int $number
+     * @param array{0:int, 1:int}  $range
+     */
     protected function isNumberInRange(int $number, array $range): bool
     {
         return $number >= $range[0] && $number <= $range[1];
     }
 
-    private function fqdnToCodeceptionFriendlyShortname(string $test)
+    private function fqdnToCodeceptionFriendlyShortname(string $test): string
     {
         list( $testFqdnClassName, $testMethod ) = explode('::', $test);
         $parts = explode('\\', $testFqdnClassName);
         $shortClass = array_pop($parts);
         return $shortClass . ':' . $testMethod;
-    }
-
-    /**
-     * @param $projectRootDir
-     *
-     * @return array
-     */
-    public function getCodeCoverageFilepaths($projectRootDir): array
-    {
-        return array_filter(array_merge(
-            glob($projectRootDir . '/*.cov') ?: [],
-            glob($projectRootDir . '/tests/*.cov') ?: [],
-            glob($projectRootDir . '/tests/*/*.cov') ?: [],
-        ));
     }
 }
