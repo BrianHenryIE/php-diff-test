@@ -147,16 +147,14 @@ class DiffTest
     /**
      * @param $projectRootDir
      *
-     * @return array|false
+     * @return array
      */
     public function getCodeCoverageFilepaths($projectRootDir): array
     {
-        $covFiles = array_merge(
-            glob($projectRootDir . '/*.cov'),
-            glob($projectRootDir . '/tests/*.cov'),
-            glob($projectRootDir . '/tests/*/*.cov')
-        );
-
-        return $covFiles ?: array();
+        return array_filter(array_merge(
+            glob($projectRootDir . '/*.cov') ?: [],
+            glob($projectRootDir . '/tests/*.cov') ?: [],
+            glob($projectRootDir . '/tests/*/*.cov') ?: [],
+        ));
     }
 }
