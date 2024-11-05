@@ -2,12 +2,18 @@
 <?php
 /**
  * Filter a PHP code coverage file to only the files changed in a diff.
+ *
+ * `diffcoverage --input-files "coverage1.php,coverage2.php" --diff-from main --diff-to HEAD^ --output-file diff-coverage/coverage-filtered.php`
+ *
+ * Then presumably you want to run `phpcov merge --html ./diff-coverage/report ./diff-coverage`. NB `phpcov` will merge all coverage
+ * files in the directory and its subdirectories so this report should be output into its own directory.
  */
 
 include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
-$diffHtml = new \BrianHenryIE\PhpDiffTest\DiffCoverage();
+use Symfony\Component\Console\Application;
 
-$projectRootDir = getcwd();
-
-$diffHtml->run( $projectRootDir );
+$application = new Application();
+$application->add(new \BrianHenryIE\PhpDiffTest\DiffCoverageCLI());
+$application->setDefaultCommand('diffcoverage', true);
+$application->run();
