@@ -4,7 +4,7 @@ namespace BrianHenryIE\PhpDiffTest;
 
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 
-class DiffTest
+class DiffFilter
 {
     public function run($projectRootDir)
     {

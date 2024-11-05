@@ -9,7 +9,7 @@
     }
   ],
   "bin": [
-    "bin/phpdifftest",
+    "bin/difffilter",
     "bin/diffcoverage"
   ],
   "autoload":{
