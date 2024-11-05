@@ -1,4 +1,5 @@
 <?php
+
 /**
  *
  * Consider {@see https://github.com/sebastianbergmann/diff} which is used by PHPUnit so already part of the project.
@@ -11,18 +12,26 @@ use Gitonomy\Git\Repository;
 
 class DiffLines
 {
+    protected Repository $repository;
+
+    public function __construct(
+        protected string $cwd, // With trailingslash.
+        ?Repository $repository = null,
+    ) {
+        $this->repository = $repository ?? new Repository($cwd);
+    }
+
     /**
      * @param string $projectRootDir Path to the Git repository.
      * @param ?string $diff Branch or commit hash to diff against.
      * @return array<string, array<int[]>>
      * @throws Exception
      */
-    public function getChangedLines(string $projectRootDir, ?string $diffFrom = 'main', ?string $diffTo = null): array
+    public function getChangedLines(string $diffFrom = 'main', string $diffTo = 'HEAD^'): array
     {
-        $projectRootDir = rtrim($projectRootDir, '/') . '/';
 
-        $changedFilesAll = $this->getChangedFiles($projectRootDir);
-        $diffFilesLines   = $this->getChangedLinesForFiles($projectRootDir, $changedFilesAll);
+        $changedFilesAll = $this->getChangedFiles($this->repository, $diffFrom, $diffTo);
+        $diffFilesLines   = $this->getChangedLinesForFiles($this->cwd, $changedFilesAll);
 
         $diffPhpFilesLines = array_filter($diffFilesLines, function (string $filePath): bool {
             return substr($filePath, -4) === '.php';
@@ -107,16 +116,17 @@ class DiffLines
      * @param string|null $diff
      * @return array<string|\Gitonomy\Git\Diff\File>
      */
-    protected function getChangedFiles(string $projectRootDir, ?string $diff = 'main'): array
+    protected function getChangedFiles(Repository $repository, string $diffFrom = 'main', string $diffTo = 'HEAD^'): array
     {
-        $repository = new Repository($projectRootDir);
 
         $staged = $repository->getWorkingCopy()->getDiffStaged();
         $pending = $repository->getWorkingCopy()->getDiffPending();
         $untrackedFiles = $repository->getWorkingCopy()->getUntrackedFiles();
 
         // Contains only the commited changes.
-        $diff = $repository->getDiff("$diff..HEAD^");
+        $diff = $repository->getDiff("$diffFrom..$diffTo");
+
+        // TODO: If $diffTo is not HEAD^, we probably shouldn't included untracked, pending, staged files.
 
         $changes = array_merge(
             $diff->getFiles(),
