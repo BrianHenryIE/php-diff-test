@@ -9,7 +9,8 @@
     }
   ],
   "bin": [
-    "bin/phpdifftest"
+    "bin/phpdifftest",
+    "bin/diffcoverage"
   ],
   "autoload":{
     "psr-4": {

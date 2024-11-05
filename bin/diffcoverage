@@ -1,0 +1,13 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Filter a PHP code coverage file to only the files changed in a diff.
+ */
+
+include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+
+$diffHtml = new \BrianHenryIE\PhpDiffTest\DiffCoverage();
+
+$projectRootDir = getcwd();
+
+$diffHtml->run( $projectRootDir );
