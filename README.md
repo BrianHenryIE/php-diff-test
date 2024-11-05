@@ -43,9 +43,9 @@ Obviously, it's assumed you're working inside a Git repo and have previously gen
 ## TODO
 
 * ~~I think the diff doesn't track unstaged/uncommitted files which could have code coverage~~
-* Tests written after the code coverage report are not included in the filter
-* Also run tests changed in the diff / run all tests changed since the code coverage was generated (merge/increment coverage?)
-* Allow specifying a hash to diff with – i.e. make pull requests run faster
+* Also run tests changed in the diff / run all tests changed since the code coverage was generated (i.e. Tests written after the code coverage report are not included in the filter)
+* Figure how best merge/increment coverage reports – i.e. once `diffcoverage` has been run on the full coverage report, add to it when new tests are written
+* ~~Allow specifying a hash to diff with – i.e. make pull requests run faster~~
 * https://github.com/sebastianbergmann/php-code-coverage/issues/571 – code coverage annotations make this tool less thorough 
-* Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect
+* ~~Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect~~
 * Tests!
