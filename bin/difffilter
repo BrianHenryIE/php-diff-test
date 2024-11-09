@@ -3,7 +3,7 @@
 /**
  * Prints a filter to use with PHPUnit or Codeception based on what test cases cover the files changed in a diff.
  *
- * `difffilter --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^`
+ * `difffilter --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^ --granularity=line`
  */
 
 include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';

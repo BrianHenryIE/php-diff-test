@@ -18,8 +18,9 @@ Requires `XDEBUG_MODE=coverage`.
 Prints a filter to use with PHPUnit or Codeception, so you only run tests relevant to changes in the branch you're working on.
 
 * Run: `phpunit --filter="$(difffilter)"` or `codecept run suitename "$(difffilter)"`.
-* Try just `difffilter` to see the filter that will be applied, which is effectively `difffilter --input-files <glob *.cov> --diff-from main --diff-to HEAD^`.
-* Try `difffilter --diff-from HEAD~3` to print a shallower diff.
+* Try just `difffilter` to see the filter that will be applied, which is effectively `difffilter --input-files <glob *.cov> --diff-from main --diff-to HEAD^ --granularity=line`
+* Try `difffilter --diff-from HEAD~3` to print a shallower filter
+* Try `difffilter --granularity=file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
 
 ### `diffcoverage`
 

@@ -15,7 +15,7 @@ class DiffFilter
         $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
     }
 
-    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo): void
+    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo, Granularity $granularity): void
     {
         // Search $projectRootDir and two levels of tests for *.cov
         // If there are corresponding *.suite.yml, treat them as Codeception
@@ -33,7 +33,11 @@ class DiffFilter
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines($diffFrom, $diffTo);
 
-        $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite($coverageSuiteNamesFilePaths, $diffFilesLineRanges);
+        $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
+            $coverageSuiteNamesFilePaths,
+            $diffFilesLineRanges,
+            $granularity,
+        );
 
         if ($this->isCodeceptionRun($this->cwd, array_keys($coverageSuiteNamesFilePaths))) {
             // codecept run wpunit ":API_WPUnit_Test:test_add_autologin_to_message"
@@ -87,9 +91,10 @@ class DiffFilter
      * @param array $coverageSuiteNamesFilePaths
      * @param array $fqdnTestsToRunBySuite
      * @param array<string, array<int[]>> $diffFilesLineRanges
-     * @return array
+     * @param Granularity $granularity Return tests which cover the specific lines, or cover anywhere in the modified file.
+     * @return array<string, string[]> array of arrays, indexed by suitename, of FQDN test cases
      */
-    public function getFqdnTestsToRunBySuite(array $coverageSuiteNamesFilePaths, array $diffFilesLineRanges): array
+    protected function getFqdnTestsToRunBySuite(array $coverageSuiteNamesFilePaths, array $diffFilesLineRanges, Granularity $granularity): array
     {
         $fqdnTestsToRunBySuite = array();
         foreach ($coverageSuiteNamesFilePaths as $suiteName => $coverageFilePath) {
@@ -104,27 +109,40 @@ class DiffFilter
             $fqdnTestClassesAndFilepaths = array();
             $fqdnTestClassesAndShortname = array();
 
+            /**
+             * Array indexed by filepath of covered file, containing array of lines in that file, containing an array
+             * of FQDN test cases that cover that line.
+             *
+             * @var array<string, array<int,array<string>>> $lineCoverage
+             */
             $lineCoverage = $coverage->getData()->lineCoverage();
-
-
 
             foreach ($srcFilesAbsolutePaths as $srcAbspath) {
                 if (!isset($lineCoverage[$srcAbspath])) {
                     continue;
                 }
                 foreach ($lineCoverage[$srcAbspath] as $lineNumber => $tests) {
-                    if ($this->isNumberInRanges($lineNumber, $diffFilesLineRanges[$srcAbspath])) {
-                        /**
-                         * @var string $test is the FQDN string of the test for this line number
-                         */
-                        foreach ($tests as $test) {
-                            $fqdnTestsToRunBySuite[$suiteName][] = $test;
-                        }
+                    switch ($granularity) {
+                        case Granularity::FILE:
+                            foreach ($tests as $test) {
+                                $fqdnTestsToRunBySuite[$suiteName][$test] = $test;
+                            }
+                            break;
+                        case Granularity::LINE:
+                            if ($this->isNumberInRanges($lineNumber, $diffFilesLineRanges[$srcAbspath])) {
+                                /**
+                                 * @var string $test is the FQDN string of the test for this line number
+                                 */
+                                foreach ($tests as $test) {
+                                    $fqdnTestsToRunBySuite[$suiteName][$test] = $test;
+                                }
+                            }
+                            break;
                     }
                 }
             }
         }
-        return $fqdnTestsToRunBySuite; // array($suiteName, $fqdnTestsToRunBySuite, $tests);
+        return $fqdnTestsToRunBySuite;
     }
 
     /**

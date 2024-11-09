@@ -95,6 +95,13 @@ class DiffFilterCLI extends Command
              InputArgument::OPTIONAL,
              'Reference to diff to.',
          );
+
+         $this->addOption(
+             'granularity',
+             null,
+             InputArgument::OPTIONAL,
+             '`line`|`file`. Return test cases that cover anywhere in files in the diff or specific to lines changed in the diff',
+         );
     }
 
     /**
@@ -113,6 +120,7 @@ class DiffFilterCLI extends Command
             : $this->getCodeCoverageFilepaths($this->cwd);
         $diffFrom = $input->getOption('diff-from') ?? 'main';
         $diffTo = $input->getOption('diff-to') ?? 'HEAD^';
+        $granularity = Granularity::from($input->getOption('granularity') ?? 'line');
 
         if (empty($inputFiles)) {
             $output->writeln('No code coverage files found.');
@@ -129,7 +137,7 @@ class DiffFilterCLI extends Command
         }, $inputFiles);
 
         try {
-            $this->diffFilter->execute($coverageFilePaths, $diffFrom, $diffTo);
+            $this->diffFilter->execute($coverageFilePaths, $diffFrom, $diffTo, $granularity);
             return Command::SUCCESS;
         } catch (\Exception $exception) {
             $output->writeln(sprintf('<error>%s</error>', $exception->getMessage()));
