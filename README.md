@@ -29,7 +29,7 @@ Prints a filter to use with PHPUnit or Codeception, so you only run tests releva
 Outputs a new `.cov` file containing only the files whose lines have been changed in the diff. Intended to then print a HTML coverage report
 
 * Run: `diffcoverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^ --output-file diff-coverage/diff-from-to.cov`
-* Then to generate the new HTML report: `phpcov merge --html ./diff-coverage/report ./diff-coverage`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `diffcoverage`'s new `.cov` `--output-file` to be in its own directory.
+* Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `diffcoverage`'s new `.cov` `--output-file` to be in its own directory.
 
 ## How it works
 
