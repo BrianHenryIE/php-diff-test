@@ -1,3 +1,5 @@
+[![PHP 8.1](https://img.shields.io/badge/PHP-8.1-8892BF.svg?logo=php)](https://php.net)
+
 # PHP Coverage Filter
 
 * Run only the tests that cover lines that have been changed.
