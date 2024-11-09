@@ -24,7 +24,7 @@ class DiffLines
     /**
      * @param string $projectRootDir Path to the Git repository.
      * @param ?string $diff Branch or commit hash to diff against.
-     * @return array<string, array<int[]>>
+     * @return array<string, array<int[]>> Index: filepath, array of pairs (ranges) of changed lines, filtered to .php files.
      * @throws Exception
      */
     public function getChangedLines(string $diffFrom = 'main', string $diffTo = 'HEAD^'): array
