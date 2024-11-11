@@ -1,4 +1,5 @@
-scratch
-.idea
-vendor
-.phpunit.result.cache
+/scratch
+/.idea
+/vendor
+/.phpunit.result.cache
+/*.phar
