@@ -9,8 +9,7 @@
     }
   ],
   "bin": [
-    "bin/difffilter",
-    "bin/diffcoverage"
+    "bin/difftest"
   ],
   "autoload":{
     "psr-4": {

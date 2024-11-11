@@ -15,21 +15,21 @@ Requires `XDEBUG_MODE=coverage`.
 
 ## Run
 
-### `difffilter` 
+### `difftest filter` 
 
 Prints a filter to use with PHPUnit or Codeception, so you only run tests relevant to changes in the branch you're working on.
 
-* Run: `phpunit --filter="$(difffilter)"` or `codecept run suitename "$(difffilter)"`.
-* Try just `difffilter` to see the filter that will be applied, which is effectively `difffilter --input-files <glob *.cov> --diff-from main --diff-to HEAD^ --granularity line`
-* Try `difffilter --diff-from HEAD~3` to print a shallower filter
-* Try `difffilter --granularity file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
+* Run: `phpunit --filter="$(difftest filter)"` or `codecept run suitename "$(difftest filter)"`.
+* Try just `difftest filter` to see the filter that will be applied, which is effectively `difftest filter --input-files <glob *.cov> --diff-from main --diff-to HEAD^ --granularity line`
+* Try `difftest filter --diff-from HEAD~3` to print a shallower filter
+* Try `difftest filter --granularity file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
 
-### `diffcoverage`
+### `difftest coverage`
 
 Outputs a new `.cov` file containing only the files whose lines have been changed in the diff. Intended to then print a HTML coverage report
 
-* Run: `diffcoverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^ --output-file diff-coverage/diff-from-to.cov`
-* Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `diffcoverage`'s new `.cov` `--output-file` to be in its own directory.
+* Run: `difftest coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^ --output-file diff-coverage/diff-from-to.cov`
+* Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `difftest coverage`'s new `.cov` `--output-file` to be in its own directory.
 
 ## How it works
 
@@ -47,7 +47,7 @@ Obviously, it's assumed you're working inside a Git repo and have previously gen
 
 * ~~I think the diff doesn't track unstaged/uncommitted files which could have code coverage~~
 * Also run tests changed in the diff / run all tests changed since the code coverage was generated (i.e. Tests written after the code coverage report are not included in the filter)
-* Figure how best merge/increment coverage reports – i.e. once `diffcoverage` has been run on the full coverage report, add to it when new tests are written
+* Figure how best merge/increment coverage reports – i.e. once `difftest coverage` has been run on the full coverage report, add to it when new tests are written
 * ~~Allow specifying a hash to diff with – i.e. make pull requests run faster~~
 * https://github.com/sebastianbergmann/php-code-coverage/issues/571 – code coverage annotations make this tool less thorough 
 * ~~Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect~~

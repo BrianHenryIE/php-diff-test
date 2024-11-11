@@ -71,7 +71,7 @@ class DiffCoverageCLI extends Command
      */
     protected function configure()
     {
-        $this->setName('diffcoverage');
+        $this->setName('coverage');
         $this->setDescription('Filter a code coverage file to only include the files contained in a diff.');
 
         $this->addOption(

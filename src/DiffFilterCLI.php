@@ -72,8 +72,8 @@ class DiffFilterCLI extends Command
      */
     protected function configure()
     {
-        $this->setName('difffilter');
-        $this->setDescription('Filter a code coverage file to only include the files contained in a diff.');
+        $this->setName('filter');
+        $this->setDescription('Create a PHPUnit filter to run tests only on the lines/files contained in a diff.');
 
         $this->addOption(
             'input-files',
