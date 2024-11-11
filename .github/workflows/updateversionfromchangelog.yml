@@ -1,0 +1,32 @@
+# When a new version number is added to the changelog, update the bin.
+
+name: Update version from changelog
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'CHANGELOG.md'
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    name: Update version number when CHANGELOG.md is updated
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+        with:
+          ref: master
+
+      - name: "Edit `bin/difftest` to update the version number"
+        run: |
+          CURRENT_RELEASE=$(cat CHANGELOG.md | grep --max-count=1 -o '##.*' | awk '{print $2}')
+          find bin -name 'difftest' -exec sed -i "s/version: '[[:digit:]]*\.[[:digit:]]*\.[[:digit:]]*');/version: '$CURRENT_RELEASE');/" {} +
+
+      - name: Commit updated
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: master
+          file_pattern: "bin/difftest"
+          commit_message: "🤖 Update version number in `bin/difftest`"

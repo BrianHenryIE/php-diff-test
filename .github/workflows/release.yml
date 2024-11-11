@@ -1,0 +1,86 @@
+name: Attach phar to releases
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  create-phar:
+    runs-on: ubuntu-latest
+    name: Create and attach phar on new release
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.1
+
+      - name: Install dependencies
+        run: composer install --no-dev --prefer-dist
+
+      # `sed` is different on MacOS and Ubuntu. Use `gsed` to test locally.
+      # `brew install gsed`
+      - name: "Edit `bin/difftest` to update the version number"
+        env:
+          CURRENT_RELEASE: ${{ github.event.release.tag_name }}
+        run: |
+          find bin -name 'difftest' -exec sed -i "s/version: '[[:digit:]]*\.[[:digit:]]*\.[[:digit:]]*');/version: '$CURRENT_RELEASE');/" {} +
+
+      - name: Commit updated
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: master
+          file_pattern: "bin/difftest"
+          commit_message: "🤖 Update version number in `bin/difftest`"
+
+      - name: Create .phar
+        run: |
+          wget -O phar-composer.phar https://github.com/clue/phar-composer/releases/download/v1.4.0/phar-composer-1.4.0.phar
+          mkdir build
+          mv vendor build/vendor
+          mv src build/src
+          mv bin build/bin
+          mv composer.json build
+          php -d phar.readonly=off phar-composer.phar build ./build/ difftest.phar
+
+      - name: Test run `difftest.phar`
+        run: php difftest.phar --version
+
+      - name: Check version
+        run: |
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          CURRENT_VERSION="$(php difftest.phar --version | sed -e 's#^.\+ \([0-9.]\+\)$#\1#')"
+          if [ "${TAG_NAME#v}" != "${CURRENT_VERSION}" ]; then
+            echo "::error::Latest tag differs from current version"
+            exit 10
+          fi
+
+#      - name: Import GPG key
+#        uses: crazy-max/ghaction-import-gpg@v5
+#        with:
+#          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+#          passphrase: ${{ secrets.PASSPHRASE }}
+#
+#      - name: Sign the PHAR
+#        run: |
+#          ls difftest.phar
+#          gpg --local-user BrianHenryIE@gmail.com \
+#              --batch \
+#              --yes \
+#              --passphrase="${{ secrets.PASSPHRASE }}" \
+#              --detach-sign \
+#              --output difftest.phar.asc \
+#              difftest.phar
+
+      - uses: meeDamian/github-release@2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            difftest.phar
+#            difftest.phar.asc
+          gzip: false
+          allow_override: true
