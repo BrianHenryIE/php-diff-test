@@ -52,3 +52,10 @@ Obviously, it's assumed you're working inside a Git repo and have previously gen
 * https://github.com/sebastianbergmann/php-code-coverage/issues/571 – code coverage annotations make this tool less thorough 
 * ~~Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect~~
 * Tests!
+* Should this be implemented as a PHPUnit extension?
+
+## See Also
+
+* https://github.com/robiningelbrecht/phpunit-coverage-tools
+* https://docs.phpunit.de/en/10.5/extending-phpunit.html
+* https://localheinz.com/articles/2023/02/14/extending-phpunit-with-its-new-event-system/
