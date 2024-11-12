@@ -125,7 +125,7 @@ class DiffCoverageCLI extends Command
             ? explode(',', $input->getOption('input-files'))
             : $this->getCodeCoverageFilepaths($this->cwd);
         $diffFrom = $input->getOption('diff-from') ?? 'main';
-        $diffTo = $input->getOption('diff-to') ?? 'HEAD^';
+        $diffTo = $input->getOption('diff-to') ?? 'HEAD~0';
         $outputFile = $input->getOption('output-file') ?? "diff-coverage/diff-{$diffFrom}-{$diffTo}.cov";
 
         if (empty($inputFiles)) {

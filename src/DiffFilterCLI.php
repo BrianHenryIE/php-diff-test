@@ -119,7 +119,7 @@ class DiffFilterCLI extends Command
             ? explode(',', $input->getOption('input-files'))
             : $this->getCodeCoverageFilepaths($this->cwd);
         $diffFrom = $input->getOption('diff-from') ?? 'main';
-        $diffTo = $input->getOption('diff-to') ?? 'HEAD^';
+        $diffTo = $input->getOption('diff-to') ?? 'HEAD~0';
         $granularity = Granularity::from($input->getOption('granularity') ?? 'line');
 
         if (empty($inputFiles)) {

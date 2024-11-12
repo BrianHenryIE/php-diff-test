@@ -140,7 +140,7 @@ class DiffLines
      * @param string|null $diff
      * @return array<string|\Gitonomy\Git\Diff\File>
      */
-    protected function getChangedFiles(Repository $repository, string $diffFrom = 'main', string $diffTo = 'HEAD^'): array
+    protected function getChangedFiles(Repository $repository, string $diffFrom = 'main', string $diffTo = 'HEAD~0'): array
     {
 
         $staged = $repository->getWorkingCopy()->getDiffStaged();
@@ -150,7 +150,7 @@ class DiffLines
         // Contains only the commited changes.
         $diff = $repository->getDiff("$diffFrom..$diffTo");
 
-        // TODO: If $diffTo is not HEAD^, we probably shouldn't included untracked, pending, staged files.
+        // TODO: If $diffTo is not HEAD~0, we probably shouldn't included untracked, pending, staged files.
 
         $changes = array_merge(
             $diff->getFiles(),

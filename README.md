@@ -20,7 +20,7 @@ Requires `XDEBUG_MODE=coverage`.
 Prints a filter to use with PHPUnit or Codeception, so you only run tests relevant to changes in the branch you're working on.
 
 * Run: `phpunit --filter="$(difftest filter)"` or `codecept run suitename "$(difftest filter)"`.
-* Try just `difftest filter` to see the filter that will be applied, which is effectively `difftest filter --input-files <glob *.cov> --diff-from main --diff-to HEAD^ --granularity line`
+* Try just `difftest filter` to see the filter that will be applied, which is effectively `difftest filter --input-files <glob *.cov> --diff-from main --diff-to HEAD~0 --granularity line`
 * Try `difftest filter --diff-from HEAD~3` to print a shallower filter
 * Try `difftest filter --granularity file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
 
@@ -28,7 +28,7 @@ Prints a filter to use with PHPUnit or Codeception, so you only run tests releva
 
 Outputs a new `.cov` file containing only the files whose lines have been changed in the diff. Intended to then print a HTML coverage report
 
-* Run: `difftest coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD^ --output-file diff-coverage/diff-from-to.cov`
+* Run: `difftest coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --output-file diff-coverage/diff-from-to.cov`
 * Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `difftest coverage`'s new `.cov` `--output-file` to be in its own directory.
 
 ## How it works
