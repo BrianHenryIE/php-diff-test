@@ -208,7 +208,7 @@ class DiffFilter
 
             $code = file_get_contents($filePath);
 
-            if(empty($filePath)){
+            if (empty($filePath)) {
                 // throw new Exception?
                 continue;
             }
@@ -231,7 +231,7 @@ class DiffFilter
                         $this->class = $node->name->toString();
                     }
                     if ($node instanceof ClassMethod) {
-                        if (str_ends_with($node->name->toString(), 'Test')) {
+                        if (str_starts_with($node->name->toString(), 'test')) {
                             $this->methods[$this->namespace . '\\' . $this->class . '::' . $node->name->toString()]
                                 = [$node->getStartLine(), $node->getEndLine()];
                         }
