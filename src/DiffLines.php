@@ -31,10 +31,34 @@ class DiffLines
     {
 
         $changedFilesAll = $this->getChangedFiles($this->repository, $diffFrom, $diffTo);
-        $diffFilesLines   = $this->getChangedLinesForFiles($this->cwd, $changedFilesAll);
+        $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changedFilesAll);
 
         $diffPhpFilesLines = array_filter($diffFilesLines, function (string $filePath): bool {
             return substr($filePath, -4) === '.php';
+        }, ARRAY_FILTER_USE_KEY);
+
+        return $diffPhpFilesLines;
+    }
+
+
+    public function getChangedLinesForNewTests(): array {
+
+        $repository = $this->repository;
+
+        $staged = $repository->getWorkingCopy()->getDiffStaged();
+        $pending = $repository->getWorkingCopy()->getDiffPending();
+        $untrackedFiles = $repository->getWorkingCopy()->getUntrackedFiles();
+
+        $changes = array_merge(
+            $staged->getFiles(),
+            $pending->getFiles(),
+            $untrackedFiles,
+        );
+
+        $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changes);
+
+        $diffPhpFilesLines = array_filter($diffFilesLines, function (string $filePath): bool {
+            return substr($filePath, -8) === 'Test.php';
         }, ARRAY_FILTER_USE_KEY);
 
         return $diffPhpFilesLines;

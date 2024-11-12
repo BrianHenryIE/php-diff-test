@@ -2,6 +2,12 @@
 
 namespace BrianHenryIE\PhpDiffTest;
 
+use PhpParser\Node\Stmt\ClassLike;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\ParserFactory;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 
 class DiffFilter
@@ -33,6 +39,8 @@ class DiffFilter
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines($diffFrom, $diffTo);
 
+        $fqdnUncommittedTests = $this->getUncommittedTests();
+
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
             $coverageSuiteNamesFilePaths,
             $diffFilesLineRanges,
@@ -51,13 +59,14 @@ class DiffFilter
 
             echo ':' . implode('|', array_unique(array_merge(...array_values($classnameTestsToRunBySuite))));
         } else {
+            $fqdnTests = array_unique(array_merge($fqdnUncommittedTests, ...array_values($fqdnTestsToRunBySuite)));
             // phpunit --filter="BrianHenryIE\\\MoneroRpc\\\DaemonUnitTest::testOnGetBlockHash"
             echo str_replace(
                 '\\',
                 '\\\\',
                 implode(
                     '|',
-                    array_unique(array_merge(...array_values($fqdnTestsToRunBySuite)))
+                    $fqdnTests
                 )
             );
         }
@@ -165,6 +174,7 @@ class DiffFilter
      */
     protected function isNumberInRange(int $number, array $range): bool
     {
+        // TODO: check the numbers are in order.
         return $number >= $range[0] && $number <= $range[1];
     }
 
@@ -174,5 +184,106 @@ class DiffFilter
         $parts = explode('\\', $testFqdnClassName);
         $shortClass = array_pop($parts);
         return $shortClass . ':' . $testMethod;
+    }
+
+    /**
+     * @return array<string> FQDN test cases
+     */
+    private function getUncommittedTests(): array
+    {
+        $testFilesLines = $this->diffLines->getChangedLinesForNewTests();
+
+        $tests = [];
+
+        foreach ($testFilesLines as $filePath => $lines) {
+            // Parse the PHP file and extract the test method names.
+
+            $code = file_get_contents($filePath);
+
+            if(empty($filePath)){
+                // throw new Exception?
+                continue;
+            }
+
+            $parser = (new ParserFactory())->createForNewestSupportedVersion();
+            $ast = $parser->parse($code);
+
+            $traverser = new NodeTraverser();
+            $visitor = new class extends NodeVisitorAbstract {
+                protected string $namespace;
+                protected string $class;
+                protected array $methods = [];
+
+                public function enterNode(\PhpParser\Node $node)
+                {
+                    if ($node instanceof Namespace_) {
+                        $this->namespace = $node->name->toString();
+                    }
+                    if ($node instanceof ClassLike) {
+                        $this->class = $node->name->toString();
+                    }
+                    if ($node instanceof ClassMethod) {
+                        if (str_ends_with($node->name->toString(), 'Test')) {
+                            $this->methods[$this->namespace . '\\' . $this->class . '::' . $node->name->toString()]
+                                = [$node->getStartLine(), $node->getEndLine()];
+                        }
+                    }
+
+                    return $node;
+                }
+
+                public function getMethods(): array
+                {
+                    return $this->methods;
+                }
+            };
+            $traverser->addVisitor($visitor);
+            $traverser->traverse($ast);
+
+            $methods = $visitor->getMethods();
+
+            foreach ($methods as $fqdn => $testLines) {
+                foreach ($lines as $changedRange) {
+                    if ($this->rangeIntercepts($testLines, $changedRange)) {
+                        $tests[] = $fqdn;
+                    }
+                }
+            }
+        }
+
+        return $tests;
+    }
+
+    /**
+     * @param array{0:int, 1:int} $range1
+     * @param array{0:int, 1:int} $range2
+     */
+    protected function rangeIntercepts(array $range1, array $range2): bool
+    {
+        // Ensure the ranges values are in ascending order.
+        if ($range1[0] > $range1[1]) {
+            $range1 = [
+                $range1[1],
+                $range1[0]
+            ];
+        }
+        if ($range2[0] > $range2[1]) {
+            $range2 = [
+                $range2[1],
+                $range2[0]
+            ];
+        }
+
+        // Does either range start or end within the other range?
+        if (
+            $this->isNumberInRange($range1[0], $range2)
+            || $this->isNumberInRange($range1[1], $range2)
+            || $this->isNumberInRange($range2[0], $range1)
+            || $this->isNumberInRange($range2[1], $range1)
+        ) {
+            return true;
+        }
+
+        return false;
     }
 }
