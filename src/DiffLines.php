@@ -68,12 +68,12 @@ class DiffLines
                 $fileLineChangesRanges[$pathIndex] = [];
             }
 
-            $fileLineChangesRanges[$pathIndex] = $file instanceof \Gitonomy\Git\Diff\File
-                ? array_merge(
-                    $fileLineChangesRanges[$pathIndex],
-                    $this->getChangedLinesPerFile($file, $pathIndex)
-                )
-                : [[ 0, $this->getNumberOfLinesInAFile($pathIndex) ]];
+            $fileLineChangesRanges[$pathIndex] = array_merge(
+                $fileLineChangesRanges[$pathIndex],
+                $file instanceof \Gitonomy\Git\Diff\File
+                                ? $this->getChangedLinesPerFile($file, $pathIndex)
+                                : [ 0, $this->getNumberOfLinesInAFile($pathIndex) ]
+            );
         }
 
         // New files.
@@ -101,7 +101,7 @@ class DiffLines
             // New file.
             if ($fileChange->getRangeOldStart() === 0 && $fileChange->getRangeOldCount() === 0) {
                 $fileLineChangesRanges = [];
-                $fileLineChangesRanges[] = [[ 0, $this->getNumberOfLinesInAFile($pathIndex) ]];
+                $fileLineChangesRanges[] = [ 0, $this->getNumberOfLinesInAFile($pathIndex) ];
                 return $fileLineChangesRanges;
             }
 
