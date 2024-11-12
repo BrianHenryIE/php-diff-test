@@ -26,6 +26,7 @@
     "php": ">=8.1",
     "composer-runtime-api": "^2.2",
     "gitonomy/gitlib": "^1.4",
+    "nikic/php-parser": "^5.3",
     "phpunit/php-code-coverage": "*",
     "phpunit/phpunit": "*",
     "symfony/console": "^6.4"

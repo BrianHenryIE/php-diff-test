@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "095e827c4f47fdef2de1d42594d9dfde",
+    "content-hash": "b2e05d389d3fb6b042071204dca7b29f",
     "packages": [
         {
             "name": "gitonomy/gitlib",
