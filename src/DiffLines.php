@@ -27,41 +27,24 @@ class DiffLines
      * @return array<string, array<int[]>> Index: filepath, array of pairs (ranges) of changed lines, filtered to .php files.
      * @throws Exception
      */
-    public function getChangedLines(string $diffFrom = 'main', string $diffTo = 'HEAD^'): array
+    public function getChangedLines(string $diffFrom = 'main', string $diffTo = 'HEAD~0', ?\Closure $filePathFilter = null): array
     {
 
         $changedFilesAll = $this->getChangedFiles($this->repository, $diffFrom, $diffTo);
         $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changedFilesAll);
 
-        $diffPhpFilesLines = array_filter($diffFilesLines, function (string $filePath): bool {
-            return substr($filePath, -4) === '.php';
-        }, ARRAY_FILTER_USE_KEY);
-
-        return $diffPhpFilesLines;
+        return $filePathFilter
+            ? array_filter($diffFilesLines, $filePathFilter, ARRAY_FILTER_USE_KEY)
+            : $diffFilesLines;
     }
 
 
-    public function getChangedLinesForNewTests(): array {
+    public function getChangedLinesForNewTests(string $diffFrom = 'main', string $diffTo = 'HEAD~0'): array
+    {
 
-        $repository = $this->repository;
-
-        $staged = $repository->getWorkingCopy()->getDiffStaged();
-        $pending = $repository->getWorkingCopy()->getDiffPending();
-        $untrackedFiles = $repository->getWorkingCopy()->getUntrackedFiles();
-
-        $changes = array_merge(
-            $staged->getFiles(),
-            $pending->getFiles(),
-            $untrackedFiles,
-        );
-
-        $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changes);
-
-        $diffPhpFilesLines = array_filter($diffFilesLines, function (string $filePath): bool {
+        return $this->getChangedLines($diffFrom, $diffTo, function (string $filePath): bool {
             return substr($filePath, -8) === 'Test.php';
-        }, ARRAY_FILTER_USE_KEY);
-
-        return $diffPhpFilesLines;
+        });
     }
 
     /**

@@ -37,9 +37,15 @@ class DiffFilter
             $coverageSuiteNamesFilePaths[$name] = $filePath;
         }
 
-        $diffFilesLineRanges = $this->diffLines->getChangedLines($diffFrom, $diffTo);
+        $diffFilesLineRanges = $this->diffLines->getChangedLines(
+            $diffFrom,
+            $diffTo,
+            function (string $filePath): bool {
+                    return substr($filePath, -4) === '.php';
+            }
+        );
 
-        $fqdnUncommittedTests = $this->getUncommittedTests();
+        $fqdnDiffTests = $this->getDiffTests($diffFrom, $diffTo);
 
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
             $coverageSuiteNamesFilePaths,
@@ -59,7 +65,7 @@ class DiffFilter
 
             echo ':' . implode('|', array_unique(array_merge(...array_values($classnameTestsToRunBySuite))));
         } else {
-            $fqdnTests = array_unique(array_merge($fqdnUncommittedTests, ...array_values($fqdnTestsToRunBySuite)));
+            $fqdnTests = array_unique(array_merge($fqdnDiffTests, ...array_values($fqdnTestsToRunBySuite)));
             // phpunit --filter="BrianHenryIE\\\MoneroRpc\\\DaemonUnitTest::testOnGetBlockHash"
             echo str_replace(
                 '\\',
@@ -189,9 +195,11 @@ class DiffFilter
     /**
      * @return array<string> FQDN test cases
      */
-    private function getUncommittedTests(): array
+    private function getDiffTests(string $diffFrom, string $diffTo): array
     {
-        $testFilesLines = $this->diffLines->getChangedLinesForNewTests();
+        $testFilesLines = $this->diffLines->getChangedLines($diffFrom, $diffTo, function (string $filePath): bool {
+            return substr($filePath, -8) === 'Test.php';
+        });
 
         $tests = [];
 
