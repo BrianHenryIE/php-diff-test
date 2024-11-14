@@ -72,7 +72,7 @@ class DiffLines
                 $fileLineChangesRanges[$pathIndex],
                 $file instanceof \Gitonomy\Git\Diff\File
                                 ? $this->getChangedLinesPerFile($file, $pathIndex)
-                                : [ 0, $this->getNumberOfLinesInAFile($pathIndex) ]
+                                : [[ 0, $this->getNumberOfLinesInAFile($pathIndex) ]]
             );
         }
 
