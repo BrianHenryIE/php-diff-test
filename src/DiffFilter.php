@@ -45,7 +45,7 @@ class DiffFilter
             }
         );
 
-        $fqdnDiffTests = $this->getDiffTests($diffFrom, $diffTo);
+        $fqdnDiffTests = $this->getDiffTests($diffFilesLineRanges);
 
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
             $coverageSuiteNamesFilePaths,
@@ -193,13 +193,18 @@ class DiffFilter
     }
 
     /**
+     * $param array<string, array<int[]>> $diffLinesPhp Index: filepath, array of pairs (ranges) of changed lines, already filtered to .php files.
      * @return array<string> FQDN test cases
      */
-    private function getDiffTests(string $diffFrom, string $diffTo): array
+    private function getDiffTests(array $diffLinesPhp): array
     {
-        $testFilesLines = $this->diffLines->getChangedLines($diffFrom, $diffTo, function (string $filePath): bool {
-            return substr($filePath, -8) === 'Test.php';
-        });
+        $testFilesLines = array_filter(
+            $diffLinesPhp,
+            function (string $filePath): bool {
+                return substr($filePath, -8) === 'Test.php';
+            },
+            ARRAY_FILTER_USE_KEY
+        );
 
         $tests = [];
 
