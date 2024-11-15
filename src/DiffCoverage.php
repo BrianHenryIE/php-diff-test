@@ -55,7 +55,11 @@ class DiffCoverage
             null
         );
 
-        $diffFilesLineRanges = $this->diffLines->getChangedLines($diffFrom, $diffTo);
+        $diffFilesLineRanges = $this->diffLines->getChangedLines(
+            diffFrom: $diffFrom,
+            diffTo: $diffTo,
+            filePathFilter: fn($filePath) => str_ends_with($filePath, '.php')
+        );
 
         /**
          * List of file paths contained in the diff, with files in the /tests directory removed.
