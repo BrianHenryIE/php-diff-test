@@ -7,13 +7,19 @@
 
 ## Install
 
+Via Phive:
+
+```
+phive install brianhenryie/php-diff-test
+```
+
 ```
 composer require --dev brianhenryie/php-diff-test
 ```
 
-Requires `XDEBUG_MODE=coverage`.
-
 ## Run
+
+Requires `XDEBUG_MODE=coverage`.
 
 ### `difftest filter` 
 

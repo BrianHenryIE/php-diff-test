@@ -65,22 +65,22 @@ jobs:
             exit 10
           fi
 
-#      - name: Import GPG key
-#        uses: crazy-max/ghaction-import-gpg@v5
-#        with:
-#          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-#          passphrase: ${{ secrets.PASSPHRASE }}
-#
-#      - name: Sign the PHAR
-#        run: |
-#          ls difftest.phar
-#          gpg --local-user BrianHenryIE@gmail.com \
-#              --batch \
-#              --yes \
-#              --passphrase="${{ secrets.PASSPHRASE }}" \
-#              --detach-sign \
-#              --output difftest.phar.asc \
-#              difftest.phar
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+
+      - name: Sign the PHAR
+        run: |
+          ls difftest.phar
+          gpg --local-user BrianHenryIE@gmail.com \
+              --batch \
+              --yes \
+              --passphrase="${{ secrets.PASSPHRASE }}" \
+              --detach-sign \
+              --output difftest.phar.asc \
+              difftest.phar
 
       - uses: meeDamian/github-release@2.0
         with:
