@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.7.1 November 2024
+
+* Fix: attach the GPG signature to the release!
+
 ## 0.7.0 November 2024
 
 * Add GPG signing for Phive
