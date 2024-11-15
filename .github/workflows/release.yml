@@ -87,6 +87,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             difftest.phar
-#            difftest.phar.asc
+            difftest.phar.asc
           gzip: false
           allow_override: true
