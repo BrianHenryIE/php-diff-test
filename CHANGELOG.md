@@ -22,3 +22,17 @@
 ## 0.5.0 November 2024
 
 * Merge both scripts into one application with subcommands
+
+## 0.4.0 November 2023
+
+* Add `difffilter` `--granularity=line|file` parameter
+
+## 0.3.0 November 2023
+
+* Add `diffcoverage` to filter existing code coverage report file to just files changed in the diff, a step for printing a focused HTML report
+* Rename `phpdifftest` to `difffilter`
+* General refactoring + using symfony/console now
+
+## 0.2.0 November 2023
+
+* Publish on Packagist
