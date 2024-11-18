@@ -36,3 +36,7 @@
 ## 0.2.0 November 2023
 
 * Publish on Packagist
+
+## 0.1.0 February 2023
+
+* Basics working
