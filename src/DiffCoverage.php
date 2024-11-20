@@ -6,6 +6,7 @@
 
 namespace BrianHenryIE\PhpDiffTest;
 
+use Exception;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 use SebastianBergmann\CodeCoverage\Data\ProcessedCodeCoverageData;
 use SebastianBergmann\CodeCoverage\Driver\WriteOperationFailedException;
@@ -21,7 +22,7 @@ class DiffCoverage
     /**
      * @param ?DiffLines $diffLines
      * @param ?PhpReportWriter $reportWriter
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct(
         protected string $cwd, // Current working directory, with trailing slash.
@@ -43,7 +44,11 @@ class DiffCoverage
         $oldCoverage = array_reduce(
             $coverageFilePaths,
             function (?CodeCoverage $mergedCoverage, string $coverageFilePath): CodeCoverage {
-                $coverage = include $coverageFilePath;
+                try {
+                    $coverage = include $coverageFilePath;
+                } catch (Exception $error) {
+                    throw new Exception("Coverage file: " . $coverageFilePath . " probably created with an incompatible PHPUnit version.");
+                }
 
                 if (is_null($mergedCoverage)) {
                     return $coverage;
@@ -58,7 +63,7 @@ class DiffCoverage
         $diffFilesLineRanges = $this->diffLines->getChangedLines(
             diffFrom: $diffFrom,
             diffTo: $diffTo,
-            filePathFilter: fn($filePath) => str_ends_with($filePath, '.php')
+            filePathFilter: fn($filepath) => str_ends_with($filepath, '.php')
         );
 
         /**
@@ -117,7 +122,7 @@ class DiffCoverage
 
         if (!is_dir(dirname($outputFilepath))) {
             if (!mkdir(dirname($outputFilepath), 0777, true)) {
-                throw new \Exception("Failed to create directory: " . dirname($outputFilepath));
+                throw new Exception("Failed to create directory: " . dirname($outputFilepath));
             }
         }
 
