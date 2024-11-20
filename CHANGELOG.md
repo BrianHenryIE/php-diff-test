@@ -3,6 +3,7 @@
 ## 0.8.0 November 2024
 
 * Add markdown report – `difftest markdown-report --input-file=/path/to/php.cov` – for use in GitHub Actions 
+* Fix: Handle exception when code coverage file cannot be parsed
 
 ## 0.7.1 November 2024
 
