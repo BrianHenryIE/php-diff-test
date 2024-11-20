@@ -1,0 +1,2 @@
+| {{name}} | {{lines_bar}} {{lines_executed_percent}} ({{lines_number}}) | {{branches_bar}} {{branches_executed_percent}} ({{branches_number}}) | {{paths_bar}} {{paths_executed_percent}} ({{paths_number}}) | {{methods_bar}} {{methods_tested_percent}} ({{methods_number}}) | {{classes_bar}} {{classes_tested_percent}} ({{classes_number}}) |
+

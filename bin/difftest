@@ -24,5 +24,7 @@ $application->add(new \BrianHenryIE\PhpDiffTest\DiffCoverageCLI());
  */
 $application->add(new \BrianHenryIE\PhpDiffTest\DiffFilterCLI());
 
+$application->add(new \BrianHenryIE\PhpDiffTest\MarkdownReportCLI());
+
 // Default will print help.
 $application->run();
