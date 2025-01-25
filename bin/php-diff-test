@@ -5,12 +5,12 @@ include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
 
-$application = new Application(name: 'difftest', version: '0.8.0');
+$application = new Application(name: 'php-diff-test', version: '0.8.0');
 
 /**
  * Filter a PHP code coverage file to only the files changed in a diff.
  *
- * `difftest coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --output-file diff-coverage/diff-from-to.cov`
+ * `php-diff-test coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --output-file diff-coverage/diff-from-to.cov`
  *
  * Then presumably you want to run `phpcov merge --html ./diff-coverage/report ./diff-coverage`. NB `phpcov` will merge all coverage
  * files in the directory and its subdirectories so this report should be output into its own directory.
@@ -20,7 +20,7 @@ $application->add(new \BrianHenryIE\PhpDiffTest\DiffCoverageCLI());
 /**
  * Prints a filter to use with PHPUnit or Codeception based on what test cases cover the files changed in a diff.
  *
- * `difftest filter --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --granularity line`
+ * `php-diff-test filter --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --granularity line`
  */
 $application->add(new \BrianHenryIE\PhpDiffTest\DiffFilterCLI());
 

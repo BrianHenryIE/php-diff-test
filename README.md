@@ -21,21 +21,21 @@ composer require --dev brianhenryie/php-diff-test
 
 Requires `XDEBUG_MODE=coverage`.
 
-### `difftest filter` 
+### `php-diff-test filter` 
 
 Prints a filter to use with PHPUnit or Codeception, so you only run tests relevant to changes in the branch you're working on.
 
-* Run: `phpunit --filter="$(difftest filter)"` or `codecept run suitename "$(difftest filter)"`.
-* Try just `difftest filter` to see the filter that will be applied, which is effectively `difftest filter --input-files <glob *.cov> --diff-from main --diff-to HEAD~0 --granularity line`
-* Try `difftest filter --diff-from HEAD~3` to print a shallower filter
-* Try `difftest filter --granularity file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
+* Run: `phpunit --filter="$(php-diff-test filter)"` or `codecept run suitename "$(php-diff-test filter)"`.
+* Try just `php-diff-test filter` to see the filter that will be applied, which is effectively `php-diff-test filter --input-files <glob *.cov> --diff-from main --diff-to HEAD~0 --granularity line`
+* Try `php-diff-test filter --diff-from HEAD~3` to print a shallower filter
+* Try `php-diff-test filter --granularity file` to print a filter which includes all tests that cover any line in changed files (this makes the HTML report make more sense)
 
-### `difftest coverage`
+### `php-diff-test coverage`
 
 Outputs a new `.cov` file containing only the files whose lines have been changed in the diff. Intended to then print a HTML coverage report
 
-* Run: `difftest coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --output-file diff-coverage/diff-from-to.cov`
-* Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `difftest coverage`'s new `.cov` `--output-file` to be in its own directory.
+* Run: `php-diff-test coverage --input-files "php-coverage1.cov,php-coverage2.cov" --diff-from main --diff-to HEAD~0 --output-file diff-coverage/diff-from-to.cov`
+* Then to generate the new HTML report: `phpcov merge ./diff-coverage --html ./diff-coverage/report`. NB `phpcov` will merge all `.cov` files in the directory and subdirectories so you should set `php-diff-test coverage`'s new `.cov` `--output-file` to be in its own directory.
 
 ## How it works
 
@@ -67,17 +67,17 @@ Rough notes
       "phive install"
     ],
     "test-changes": [
-      "if [ -z \"$(command -v ./tools/difftest)\" ]; then echo \"Please install 'difftest' with 'phive install'.\"; exit 1; fi;",
+      "if [ -z \"$(command -v ./tools/php-diff-test)\" ]; then echo \"Please install 'php-diff-test' with 'phive install'.\"; exit 1; fi;",
       "if [ \"$XDEBUG_MODE\" != \"coverage\" ]; then echo 'Run with XDEBUG_MODE=coverage composer test-changes'; exit 1; fi;",
-      "phpunit --filter=\"$(./tools/difftest filter --input-files tests/_reports/php.cov --granularity=line)\" --coverage-text;"
+      "phpunit --filter=\"$(./tools/php-diff-test filter --input-files tests/_reports/php.cov --granularity=line)\" --coverage-text;"
     ],
     "test-changes-report": [
-      "if [ -z \"$(command -v ./tools/difftest)\" ]; then echo \"Please install 'difftest' with 'phive install'.\"; exit 1; fi;",
+      "if [ -z \"$(command -v ./tools/php-diff-test)\" ]; then echo \"Please install 'php-diff-test' with 'phive install'.\"; exit 1; fi;",
       "if [ -z \"$(command -v ./tools/phpcov)\" ]; then echo \"Please install 'phpcov' with 'phive install'.\"; exit 1; fi;",
       "if [ \"$XDEBUG_MODE\" != \"coverage\" ]; then echo 'Run with XDEBUG_MODE=coverage composer test-changes-report'; exit 1; fi;",
       "if [ -d \"tests/_reports/diff\" ]; then rm -rf tests/_reports/diff; fi;",
-      "phpunit --filter=\"$(./tools/difftest filter --input-files tests/_reports/php.cov --granularity file)\" --coverage-text --coverage-php tests/_reports/diff/php.cov -d memory_limit=-1;",
-      "./tools/difftest coverage --input-files tests/_reports/diff/php.cov --output-file tests/_reports/diff/php.cov;",
+      "phpunit --filter=\"$(./tools/php-diff-test filter --input-files tests/_reports/php.cov --granularity file)\" --coverage-text --coverage-php tests/_reports/diff/php.cov -d memory_limit=-1;",
+      "./tools/php-diff-test coverage --input-files tests/_reports/diff/php.cov --output-file tests/_reports/diff/php.cov;",
       "./tools/phpcov merge tests/_reports/diff --html tests/_reports/diff/html;",
       "open tests/_reports/diff/html/index.html"
     ],
@@ -114,7 +114,7 @@ Rough notes:
         if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
         run: |
           # Filter the code coverage report to only include the files that have changed.
-          ./tools/difftest coverage --input-files "tests/_reports/php.cov" --diff-from origin/main --diff-to ${{ github.event.pull_request.head.sha }} --output-file tests/_reports/branch/branch.cov
+          ./tools/php-diff-test coverage --input-files "tests/_reports/php.cov" --diff-from origin/main --diff-to ${{ github.event.pull_request.head.sha }} --output-file tests/_reports/branch/branch.cov
           # Generate the HTML report for the filtered code coverage report.
           ./tools/phpcov merge tests/_reports/branch/ --html tests/_reports/diff/html
 
@@ -135,7 +135,7 @@ Rough notes:
       - name: Generate code coverage markdown report
         if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
         run: |
-          ./tools/difftest markdown-report --input-file "./tests/_reports/branch/branch.cov" --output-file code-coverage.md
+          ./tools/php-diff-test markdown-report --input-file "./tests/_reports/branch/branch.cov" --output-file code-coverage.md
         
       - name: Add code coverage comment to PR
         uses: mshick/add-pr-comment@v2
@@ -164,7 +164,7 @@ Rough notes:
 
 * ~~I think the diff doesn't track unstaged/uncommitted files which could have code coverage~~
 * Also run tests changed in the diff / run all tests changed since the code coverage was generated (i.e. Tests written after the code coverage report are not included in the filter)
-* Figure how best merge/increment coverage reports – i.e. once `difftest coverage` has been run on the full coverage report, add to it when new tests are written
+* Figure how best merge/increment coverage reports – i.e. once `php-diff-test coverage` has been run on the full coverage report, add to it when new tests are written
 * ~~Allow specifying a hash to diff with – i.e. make pull requests run faster~~
 * https://github.com/sebastianbergmann/php-code-coverage/issues/571 – code coverage annotations make this tool less thorough 
 * ~~Tidy up the code – I'm not sure is the diff report's lines the current lines or the before lines... use both for best effect~~

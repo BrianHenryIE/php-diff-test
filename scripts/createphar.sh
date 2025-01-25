@@ -11,10 +11,10 @@ cp -R vendor build/vendor
 cp -R src build/src
 cp -R bin build/bin
 cp -R composer.json build
-php -d phar.readonly=off phar-composer.phar build ./build/ difftest.phar
+php -d phar.readonly=off phar-composer.phar build ./build/ php-diff-test.phar
 
 rm phar-composer.phar
 rm -rf build
 composer install
 
-php difftest.phar --version
+php php-diff-test.phar --version

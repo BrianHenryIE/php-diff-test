@@ -30,18 +30,18 @@ jobs:
 
       # `sed` is different on MacOS and Ubuntu. Use `gsed` to test locally.
       # `brew install gsed`
-      - name: "Edit `bin/difftest` to update the version number"
+      - name: "Edit `bin/php-diff-test` to update the version number"
         env:
           CURRENT_RELEASE: ${{ github.event.release.tag_name }}
         run: |
-          find bin -name 'difftest' -exec sed -i "s/version: '[[:digit:]]*\.[[:digit:]]*\.[[:digit:]]*');/version: '$CURRENT_RELEASE');/" {} +
+          find bin -name 'php-diff-test' -exec sed -i "s/version: '[[:digit:]]*\.[[:digit:]]*\.[[:digit:]]*');/version: '$CURRENT_RELEASE');/" {} +
 
       - name: Commit updated
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: master
-          file_pattern: "bin/difftest"
-          commit_message: "🤖 Update version number in `bin/difftest`"
+          file_pattern: "bin/php-diff-test"
+          commit_message: "🤖 Update version number in `bin/php-diff-test`"
 
       - name: Create .phar
         run: |
@@ -51,15 +51,15 @@ jobs:
           mv src build/src
           mv bin build/bin
           mv composer.json build
-          php -d phar.readonly=off phar-composer.phar build ./build/ difftest.phar
+          php -d phar.readonly=off phar-composer.phar build ./build/ php-diff-test.phar
 
-      - name: Test run `difftest.phar`
-        run: php difftest.phar --version
+      - name: Test run `php-diff-test.phar`
+        run: php php-diff-test.phar --version
 
       - name: Check version
         run: |
           TAG_NAME="${{ github.event.release.tag_name }}"
-          CURRENT_VERSION="$(php difftest.phar --version | sed -e 's#^.\+ \([0-9.]\+\)$#\1#')"
+          CURRENT_VERSION="$(php php-diff-test.phar --version | sed -e 's#^.\+ \([0-9.]\+\)$#\1#')"
           if [ "${TAG_NAME#v}" != "${CURRENT_VERSION}" ]; then
             echo "::error::Latest tag differs from current version"
             exit 10
@@ -73,20 +73,20 @@ jobs:
 
       - name: Sign the PHAR
         run: |
-          ls difftest.phar
+          ls php-diff-test.phar
           gpg --local-user BrianHenryIE@gmail.com \
               --batch \
               --yes \
               --passphrase="${{ secrets.PASSPHRASE }}" \
               --detach-sign \
-              --output difftest.phar.asc \
-              difftest.phar
+              --output php-diff-test.phar.asc \
+              php-diff-test.phar
 
       - uses: meeDamian/github-release@2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
-            difftest.phar
-            difftest.phar.asc
+            php-diff-test.phar
+            php-diff-test.phar.asc
           gzip: false
           allow_override: true
