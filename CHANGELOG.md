@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.8.1 January 2025
+
+* Rename the phar to `php-diff-test` (deprecate `difftest`) because Phive is going to publish it as that anyway
+* Add some null checks
+
 ## 0.8.0 November 2024
 
 * Add markdown report – `difftest markdown-report --input-file=/path/to/php.cov` – for use in GitHub Actions 
