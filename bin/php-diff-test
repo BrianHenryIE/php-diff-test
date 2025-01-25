@@ -5,7 +5,7 @@ include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
 
-$application = new Application(name: 'php-diff-test', version: '0.8.0');
+$application = new Application(name: 'php-diff-test', version: '0.8.1');
 
 /**
  * Filter a PHP code coverage file to only the files changed in a diff.
