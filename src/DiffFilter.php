@@ -209,14 +209,15 @@ class DiffFilter
         $tests = [];
 
         foreach ($testFilesLines as $filePath => $lines) {
+            if (!is_readable($filePath)) {
+                // The codecoverage report is out of sync with the branch. E.g. it was generated on a different branch.
+                continue;
+            }
+
+
             // Parse the PHP file and extract the test method names.
 
             $code = file_get_contents($filePath);
-
-            if (empty($filePath)) {
-                // throw new Exception?
-                continue;
-            }
 
             $parser = (new ParserFactory())->createForNewestSupportedVersion();
             $ast = $parser->parse($code);
@@ -229,11 +230,17 @@ class DiffFilter
 
                 public function enterNode(\PhpParser\Node $node)
                 {
+
                     if ($node instanceof Namespace_) {
                         $this->namespace = $node->name->toString();
                     }
                     if ($node instanceof ClassLike) {
-                        $this->class = $node->name->toString();
+                        /**
+                         * @see \PhpParser\Node\Stmt\Class_
+                         */
+                        if (!is_null($node->name)) {
+                            $this->class = $node->name->toString();
+                        }
                     }
                     if ($node instanceof ClassMethod) {
                         if (str_starts_with($node->name->toString(), 'test')) {
