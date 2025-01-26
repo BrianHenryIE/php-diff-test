@@ -7,8 +7,9 @@
 * Generate code coverage report in markdown.
 
 Goals:
-✅ Speed up TDD by only running the tests that cover the code you're working on.
-✅ GitHub Actions workflow to print the code coverage report for the changed files in a pull request.
+
+* ✅ Speed up TDD by only running the tests that cover the code you're working on.
+* ✅ GitHub Actions workflow to print the code coverage report for the changed files in a pull request.
 
 ## Install
 
