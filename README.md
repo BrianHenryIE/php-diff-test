@@ -6,6 +6,8 @@
 * View the report for only files that have been changed. 
 * Generate code coverage report in markdown.
 
+Goal: ✅ GitHub Actions workflow to print the code coverage report for the changed files in a pull request.
+
 ## Install
 
 Via Phive:
