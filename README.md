@@ -103,62 +103,127 @@ Rough notes
 Rough notes:
 
 ```yaml
+name: Code Coverage
+
+# Runs PHPUnit with code coverage enabled, commits the html report to
+# GitHub Pages, generates a README badge with the coverage percentage.
+#
+# Requires a gh-pages branch already created.
+#
+#  git checkout --orphan gh-pages
+#  touch index.html
+#  git add index.html
+#  git commit -m 'Set up gh-pages branch' index.html
+#  git push origin gh-pages
+#
+# @author BrianHenryIE
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '**.php'
+  pull_request:
+    types: [ opened, reopened, ready_for_review, synchronize ]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write # For mshick/add-pr-comment
+
+    strategy:
+      matrix:
+        php-version: ['8.2']
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for git diff.
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer:v2, phive
+          coverage: xdebug
 
       - name: Install Phive tools
-        uses: ngmy/phive-install-action@master
+        uses: ngmy/phive-install-action@master # Running Phive install requires console input, this takes care of that.
+
+      - name: Checkout GitHub Pages branch for code coverage report
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: tests/_reports/html
+
+      - name: Install dependencies
+        run: composer update
+
+      - name: Clear previous code coverage
+        working-directory: tests/_reports/html
+        run: |
+          rm -rf *
 
       - name: Execute tests with full code coverage report
         run: XDEBUG_MODE=coverage composer run-script test-coverage
-
+#        run: XDEBUG_MODE=coverage vendor/bin/phpunit --filter="unit|integration" --coverage-html tests/_reports/html --coverage-clover tests/_reports/clover.xml --coverage-php tests/_reports/php.cov -d memory_limit=-1 --order-by=random
+        
       - name: Generate diff coverage report
         if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
         run: |
+          # Determine the commit that the branch was created from.
+          BRANCHED_COMMIT=$(git rev-list $(git rev-parse HEAD) ^origin/master | tail -n 1)
           # Filter the code coverage report to only include the files that have changed.
-          ./tools/php-diff-test coverage --input-files "tests/_reports/php.cov" --diff-from origin/main --diff-to ${{ github.event.pull_request.head.sha }} --output-file tests/_reports/branch/branch.cov
+          ./tools/php-diff-test coverage --input-files "tests/_reports/php.cov" --diff-from $BRANCHED_COMMIT --diff-to ${{ github.event.pull_request.head.sha }} --output-file tests/_reports/branch/branch.cov
           # Generate the HTML report for the filtered code coverage report.
           ./tools/phpcov merge tests/_reports/branch/ --html tests/_reports/diff/html
-
-      - name: Attach diff coverage report artifact to workflow run
-        id: artifact-upload-step
-        if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: tests/_reports/diff/html
-          retention-days: 90
-
-      # URL is still private.
-      - name: Output artifact URL
-        if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
-        run:  echo 'Artifact URL is ${{ steps.artifact-upload-step.outputs.artifact-url }}'
 
       - name: Generate code coverage markdown report
         if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
         run: |
           ./tools/php-diff-test markdown-report --input-file "./tests/_reports/branch/branch.cov" --output-file code-coverage.md
-        
-      - name: Add code coverage comment to PR
+
+      - name: Add code coverage comment/reply to PR
         uses: mshick/add-pr-comment@v2
         if: ${{ matrix.php-version == '8.2' && github.event_name == 'pull_request' }}
         with:
           message-path: |
             code-coverage.md
 
-      - name: Commit coverage badge
-        if: ${{ github.ref == 'refs/heads/main' && matrix.php-version == '8.2' }} # only commit on main, on the PHP version we're using in production.
+      - name: Add code coverage output to gh-pages
+        working-directory: tests/_reports/html
+        run: |
+          touch .nojekyll
+          git add -- .nojekyll *
+
+      - name: Commit code coverage to gh-pages
+        if: ${{ github.ref == 'refs/heads/master' && matrix.php-version == '8.2' }} # only commit on master, once
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_user_name: "Team"
-          commit_user_email: "email@team.com"
-          file_pattern: '.github/coverage.svg'
-          commit_message: "🤖 Update coverage badge"
-          commit_author: Team <email@team.com>
-          skip_dirty_check: false
-          skip_fetch: false
+          repository: tests/_reports/html
+          branch: gh-pages
+          commit_message: "🤖 Update code coverage to gh-pages"
+          commit_options: ""
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_KEY }}
-```
+          GITHUB_TOKEN: "${{ github.token }}"
 
+      - name: Update README badge
+        run: vendor/bin/php-coverage-badger tests/_reports/clover.xml .github/coverage.svg
+
+      - name: Commit code coverage badge
+        if: ${{ github.ref == 'refs/heads/master' && matrix.php-version == '8.2' }} # only commit on master, once
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "🤖 Update code coverage badge" # TODO: Add percentage to commit message
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOY_KEY }} # Required when master branch is protected.
+```
 
 ## TODO
 
