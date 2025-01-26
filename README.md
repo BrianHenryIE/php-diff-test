@@ -4,6 +4,7 @@
 
 * Run only the tests that cover lines that have been changed.
 * View the report for only files that have been changed. 
+* Generate code coverage report in markdown.
 
 ## Install
 
@@ -12,6 +13,8 @@ Via Phive:
 ```
 phive install brianhenryie/php-diff-test
 ```
+
+Or via Composer:
 
 ```
 composer require --dev brianhenryie/php-diff-test
