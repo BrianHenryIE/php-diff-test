@@ -33,7 +33,7 @@ class MarkdownReportCLI extends Command
     /**
      * @param ?string $name Symfony parameter.
      * @param ?MarkdownReport $markdownReport
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct(
         ?string $name = null,
@@ -47,6 +47,7 @@ class MarkdownReportCLI extends Command
     /**
      * @used-by Command::run()
      * @see Command::configure()
+     * @return void
      */
     protected function configure()
     {
@@ -60,6 +61,8 @@ class MarkdownReportCLI extends Command
             'Path to a .cov PHP code coverage file.',
         );
 
+        // To link to the file in a PR at the last commit:
+        // https://github.com/<company/project>/blob/<sha>/<path/to/file.php>
          $this->addOption(
              'base-url',
              null,
@@ -73,6 +76,14 @@ class MarkdownReportCLI extends Command
             null,
             InputArgument::OPTIONAL,
             'Output file path.',
+        );
+
+         // or absent to include all files in the report
+        $this->addOption(
+            'covered-files',
+            null,
+            InputArgument::OPTIONAL,
+            'List of files to include in the report.',
         );
     }
 
@@ -90,6 +101,7 @@ class MarkdownReportCLI extends Command
         $coverageFilePath = $input->getOption('input-file');
         $baseUrl = $input->getOption('base-url');
         $outputFile = $input->getOption('output-file');
+        $coveredFilesList = $input->getOption('covered-files') ?: '';
 
         if (!is_readable($coverageFilePath)) {
             $output->writeln('Unable to read coverage file: ' . $coverageFilePath);
@@ -100,15 +112,23 @@ class MarkdownReportCLI extends Command
         $coverage = include $coverageFilePath;
         try {
             $coverage = include $coverageFilePath;
-        } catch (Exception $e) {
-            $output->writeln("Coverage file: " . $coverageFilePath . " probably created with an incompatible PHPUnit version.");
+        } catch (Exception $exception) {
+            $output->writeln(
+                sprintf(
+                    "Coverage file: %s probably created with an incompatible PHPUnit version.",
+                    $coverageFilePath
+                )
+            );
             return Command::FAILURE;
         }
 
+        // At this point, we don't care that the files exits or not. We will check str_ends_with() to filter later.
+        $coveredFilesList = array_map('trim', explode(',', $coveredFilesList));
+
         try {
-            $this->markdownReport->process($coverage, $baseUrl, $outputFile);
+            $this->markdownReport->save($coverage, $baseUrl, $outputFile, $coveredFilesList);
             return Command::SUCCESS;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $output->writeln(sprintf('<error>%s</error>', $exception->getMessage()));
             return Command::FAILURE;
         }
