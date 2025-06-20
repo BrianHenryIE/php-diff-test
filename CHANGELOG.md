@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.9.0 June 2025
+
+* Add: `--covered-files` allow list to `markdown-report`
+* Fix: check file exists before trying to count the number of lines in it
+* Fix: remove data provider indexes
+* Improve: hyperlinking in `markdown-report` – `--base-url=https://github.com/<company/project>/blob/<sha>/%s`
+
 ## 0.8.1 January 2025
 
 * Rename the phar to `php-diff-test` (deprecate `difftest`) because Phive is going to publish it as that anyway
