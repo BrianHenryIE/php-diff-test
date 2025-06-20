@@ -8,6 +8,7 @@
 
 namespace BrianHenryIE\PhpDiffTest;
 
+use Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -35,7 +36,7 @@ class DiffCoverageCLI extends Command
     /**
      * @param ?string $name Symfony parameter.
      * @param ?DiffCoverage $diffCoverage
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct(
         ?string $name = null,
@@ -45,7 +46,8 @@ class DiffCoverageCLI extends Command
 
         $this->initCwd();
 
-        $this->diffCoverage = $diffCoverage ?? new DiffCoverage($this->cwd);
+        $diffLines = new DiffLines($this->cwd);
+        $this->diffCoverage = $diffCoverage ?? new DiffCoverage($this->cwd, $diffLines);
     }
 
     /**
@@ -53,13 +55,15 @@ class DiffCoverageCLI extends Command
      *
      * @used-by DiffCoverage::__construct()
      * @see getcwd()
+     *
+     * @throws Exception
      */
     protected function initCwd(): void
     {
         $cwd = getcwd();
 
         if ($cwd === false) {
-            throw new \Exception('Could not get current working directory.');
+            throw new Exception('Could not get current working directory.');
         }
 
         $this->cwd = rtrim($cwd, '/\\') . '/';
@@ -68,6 +72,7 @@ class DiffCoverageCLI extends Command
     /**
      * @used-by Command::run()
      * @see Command::configure()
+     * @return void
      */
     protected function configure()
     {
@@ -92,7 +97,7 @@ class DiffCoverageCLI extends Command
              'diff-to',
              null,
              InputArgument::OPTIONAL,
-             'Reference to diff from.',
+             'Reference to diff to.',
          );
 
         /**
@@ -111,19 +116,20 @@ class DiffCoverageCLI extends Command
     }
 
     /**
+     *
      * @used-by Command::run()
-     * @see Command::execute()
+     * @see     Command::execute()
      *
      * @param InputInterface $input {@see ArgvInput}
      * @param OutputInterface $output
-     *
      * @return int Shell exit code.
+     * @throws Exception
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $inputFiles = $input->getOption('input-files')
             ? explode(',', $input->getOption('input-files'))
-            : $this->getCodeCoverageFilepaths($this->cwd);
+            : $this->getCodeCoverageFilePaths($this->cwd);
         $diffFrom = $input->getOption('diff-from') ?? 'main';
         $diffTo = $input->getOption('diff-to') ?? 'HEAD~0';
         $outputFile = $input->getOption('output-file') ?? "diff-coverage/diff-{$diffFrom}-{$diffTo}.cov";
@@ -137,7 +143,7 @@ class DiffCoverageCLI extends Command
         $coverageFilePaths = array_map(function (string $inputFile): string {
             $path = str_starts_with($inputFile, $this->cwd) ? $inputFile : $this->cwd . $inputFile;
             if (!is_readable($path)) {
-                throw new \Exception("File not found or not readable: $path");
+                throw new Exception("File not found or not readable: $path");
             }
             return $path;
         }, $inputFiles);
@@ -145,7 +151,7 @@ class DiffCoverageCLI extends Command
         try {
             $this->diffCoverage->execute($coverageFilePaths, $diffFrom, $diffTo, $outputFile);
             return Command::SUCCESS;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $output->writeln(sprintf('<error>%s</error>', $exception->getMessage()));
             return Command::FAILURE;
         }
@@ -158,7 +164,7 @@ class DiffCoverageCLI extends Command
      *
      * @return string[]
      */
-    protected function getCodeCoverageFilepaths(string $projectRootDir): array
+    protected function getCodeCoverageFilePaths(string $projectRootDir): array
     {
         return array_filter(array_merge(
             glob($projectRootDir . '/*.cov') ?: [],
