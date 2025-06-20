@@ -11,6 +11,7 @@
 
 namespace BrianHenryIE\PhpDiffTest\DiffFilter;
 
+use PhpParser\Node;
 use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Namespace_;
@@ -20,9 +21,15 @@ class TestMethodRecorderVisitor extends NodeVisitorAbstract
 {
     protected string $namespace;
     protected string $class;
+
+    /**
+     * The fqdn test methods, with the range indicating start and end lines.
+     *
+     * @var array<string, array{0:int, 1:int}>
+     */
     protected array $methods = [];
 
-    public function enterNode(\PhpParser\Node $node)
+    public function enterNode(Node $node)
     {
         // Record the namespace as we pass it.
         if ($node instanceof Namespace_ && !is_null($node->name)) {
@@ -30,13 +37,11 @@ class TestMethodRecorderVisitor extends NodeVisitorAbstract
         }
 
         // Record the class name as we pass it.
-        if ($node instanceof ClassLike) {
+        if ($node instanceof ClassLike && !is_null($node->name)) {
             /**
              * @see \PhpParser\Node\Stmt\Class_
              */
-            if (!is_null($node->name)) {
-                $this->class = $node->name->toString();
-            }
+            $this->class = $node->name->toString();
         }
 
         // Record test method names.
@@ -65,6 +70,9 @@ class TestMethodRecorderVisitor extends NodeVisitorAbstract
         $this->methods[$fqdnTestMethod] = $range;
     }
 
+    /**
+     * @return array<string, array{0:int, 1:int}>
+     */
     public function getMethods(): array
     {
         return $this->methods;

@@ -1,51 +1,70 @@
 <?php
 
+/**
+ * Creates a filter to use with PHPUnit or Codeception to run tests.
+ *
+ * Inputs are PHP code coverage files and commit hashes to compare between.
+ * Output is a string.
+ */
+
 namespace BrianHenryIE\PhpDiffTest;
 
-use PhpParser\Node\Stmt\ClassLike;
-use PhpParser\Node\Stmt\ClassMethod;
-use PhpParser\Node\Stmt\Namespace_;
+use BrianHenryIE\PhpDiffTest\DiffFilter\TestMethodRecorderVisitor;
+use Exception;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
 
 class DiffFilter
 {
+    /**
+     * Utility to determine the changed lines.
+     */
     private DiffLines $diffLines;
 
     public function __construct(
-        protected string $cwd, // Current working directory, with trailing slash.
+        protected string $cwd, // Repository working directory, with trailing slash.
         ?DiffLines $diffLines = null,
     ) {
         $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
     }
 
-    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo, Granularity $granularity = Granularity::LINE): string
-    {
-        // Search $projectRootDir and two levels of tests for *.cov
-        // If there are corresponding *.suite.yml, treat them as Codeception
-        // otherwise treat them as PhpUnit.
-
+    /**
+     *
+     *
+     * @param string[] $coverageFilePaths
+     * @param string $diffFrom
+     * @param string $diffTo
+     * @param Granularity $granularity
+     * @return string
+     * @throws Exception
+     */
+    public function execute(
+        array $coverageFilePaths,
+        string $diffFrom,
+        string $diffTo,
+        Granularity $granularity = Granularity::LINE
+    ): string {
 
         /** @var array<string,string> $coverageSuiteNamesFilePaths The coverage file paths indexed by the presumed suite name. */
-        $coverageSuiteNamesFilePaths = array();
+        $coverageSuiteNamesFilePaths = [];
         foreach ($coverageFilePaths as $filePath) {
-            // TODO: This is bad if multiple .cov have the same name in different directories.
-            preg_match('/.*\/(.*).cov/', $filePath, $outputArray);
-            $name = $outputArray[1];
-            $coverageSuiteNamesFilePaths[$name] = $filePath;
+            if (1 === preg_match('/.*\/(.*).cov/', $filePath, $outputArray)) {
+                $name = $outputArray[1];
+                // TODO: This is bad if multiple .cov have the same name in different directories.
+                $coverageSuiteNamesFilePaths[$name] = $filePath;
+            }
         }
+
+        $phpFilesFilter = fn($filePath) => str_ends_with($filePath, '.php');
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines(
             $diffFrom,
             $diffTo,
-            function (string $filePath): bool {
-                    return substr($filePath, -4) === '.php';
-            }
+            $phpFilesFilter
         );
 
-        $fqdnDiffTests = $this->getDiffTests($diffFilesLineRanges);
+        $fqdnDiffTests = $this->getTestsChangedInDiff($diffFilesLineRanges);
 
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
             $coverageSuiteNamesFilePaths,
@@ -53,8 +72,11 @@ class DiffFilter
             $granularity,
         );
 
+        // Tests with data providers are indexed by test_name#dataprovider which has caused problems,
+        // so let's just run those tests with all the values
+        $removeDataProviderIndex = fn(string $testName) => explode('#', $testName)[0];
+
         if ($this->isCodeceptionRun($this->cwd, array_keys($coverageSuiteNamesFilePaths))) {
-            // codecept run wpunit ":API_WPUnit_Test:test_add_autologin_to_message"
             $classnameTestsToRunBySuite = array();
             foreach ($fqdnTestsToRunBySuite as $suiteName => $tests) {
                 $classnameTestsToRunBySuite[$suiteName] = array_map(
@@ -67,10 +89,8 @@ class DiffFilter
         } else {
             $fqdnTests = array_unique(
                 array_map(
-                    // Tests with data providers are indexed by test_name#dataprovider which has caused problems,
-                    // so let's just run those tests with all the values
-                    fn($testName) => preg_split('/#/', $testName)[0] ?: $testName,
-                    // array_values here just to make it easier to read the output.
+                    $removeDataProviderIndex,
+                    // `array_values` here just to make it easier to read when step debugging.
                     array_values(array_merge($fqdnDiffTests, ...array_values($fqdnTestsToRunBySuite)))
                 )
             );
@@ -85,6 +105,13 @@ class DiffFilter
         }
     }
 
+    /**
+     * If there are corresponding *.suite.yml for the provided coverage files, this is likely used with Codeception.
+     *
+     * @param string $projectRootDir
+     * @param string[] $coverageSuiteNames
+     * @return bool
+     */
     private function isCodeceptionRun(string $projectRootDir, array $coverageSuiteNames): bool
     {
         return !empty(array_intersect(
@@ -100,67 +127,89 @@ class DiffFilter
     private function getCodeceptionSuites(string $projectRootDir): array
     {
         $codeceptionSuites      = array();
-        $codeceptionSuitesFiles = glob($projectRootDir . '/tests/*.suite.y*ml');
+        $codeceptionSuitesFiles = glob($projectRootDir . '/tests/*.suite.y*ml') ?: [];
         foreach ($codeceptionSuitesFiles as $filepath) {
-            preg_match('/.*\/(.*)\.suite\.y.?ml/', $filepath, $output_array);
-            $name                       = $output_array[1];
-            $codeceptionSuites[ $name ] = $filepath;
+            if (1 === preg_match('/.*\/(.*)\.suite\.y.?ml/', $filepath, $output_array)) {
+                $name                       = $output_array[1];
+                $codeceptionSuites[ $name ] = $filepath;
+            }
         }
         return $codeceptionSuites;
     }
 
     /**
-     * @param array $coverageSuiteNamesFilePaths
-     * @param array $fqdnTestsToRunBySuite
-     * @param array<string, array<int[]>> $diffFilesLineRanges
-     * @param Granularity $granularity Return tests which cover the specific lines, or cover anywhere in the modified file.
-     * @return array<string, string[]> array of arrays, indexed by suitename, of FQDN test cases
+     * Using the diff lines and the code coverage files, return the tests that were run against the modified lines.
+     *
+     * @param string[] $coverageSuiteNamesFilePaths
+     * @param array<string, array<array{0:int,1:int}>> $diffFilesLineRanges
+     * @param Granularity $granularity Return tests which cover the specific lines, or anywhere in the modified file.
+     * @return array<string, string[]> array of arrays, indexed by suite name, of FQDN test cases
      */
-    protected function getFqdnTestsToRunBySuite(array $coverageSuiteNamesFilePaths, array $diffFilesLineRanges, Granularity $granularity): array
-    {
+    protected function getFqdnTestsToRunBySuite(
+        array $coverageSuiteNamesFilePaths,
+        array $diffFilesLineRanges,
+        Granularity $granularity
+    ): array {
         $fqdnTestsToRunBySuite = array();
         foreach ($coverageSuiteNamesFilePaths as $suiteName => $coverageFilePath) {
-            $fqdnTestsToRunBySuite[$suiteName] = array();
+            $fqdnTestsToRunBySuite[$suiteName] = $this->getFqdnTestsToRun(
+                $coverageFilePath,
+                $diffFilesLineRanges,
+                $granularity
+            );
+        }
+        return $fqdnTestsToRunBySuite;
+    }
 
-            /** @var CodeCoverage $coverage */
-            $coverage = include $coverageFilePath;
+    /**
+     * Using the diff lines and the code coverage file, return the tests that were run against the modified lines.
+     *
+     * @param string $coverageFilePath
+     * @param array<string, array<array{0:int,1:int}>> $diffFilesLineRanges
+     * @param Granularity $granularity Return tests which cover the specific lines, or anywhere in the modified file.
+     * @return string[] FQDN test cases
+     */
+    protected function getFqdnTestsToRun(
+        string $coverageFilePath,
+        array $diffFilesLineRanges,
+        Granularity $granularity
+    ): array {
+        $fqdnTestsToRunBySuite = array();
 
-            $srcFilesAbsolutePaths = array_keys($diffFilesLineRanges);
+        /** @var CodeCoverage $coverage */
+        $coverage = include $coverageFilePath;
 
-            $fqdnTestClassesAndMethods = array();
-            $fqdnTestClassesAndFilepaths = array();
-            $fqdnTestClassesAndShortname = array();
+        $srcFilesAbsolutePaths = array_keys($diffFilesLineRanges);
 
-            /**
-             * Array indexed by filepath of covered file, containing array of lines in that file, containing an array
-             * of FQDN test cases that cover that line.
-             *
-             * @var array<string, array<int,array<string>>> $lineCoverage
-             */
-            $lineCoverage = $coverage->getData()->lineCoverage();
+        /**
+         * Array indexed by filepath of covered file, containing array of lines in that file, containing an array
+         * of FQDN test cases that cover that line.
+         *
+         * @var array<string, array<int,array<string>>> $lineCoverage
+         */
+        $lineCoverage = $coverage->getData()->lineCoverage();
 
-            foreach ($srcFilesAbsolutePaths as $srcAbspath) {
-                if (!isset($lineCoverage[$srcAbspath])) {
-                    continue;
-                }
-                foreach ($lineCoverage[$srcAbspath] as $lineNumber => $tests) {
-                    switch ($granularity) {
-                        case Granularity::FILE:
+        foreach ($srcFilesAbsolutePaths as $srcAbspath) {
+            if (!isset($lineCoverage[$srcAbspath])) {
+                continue;
+            }
+            foreach ($lineCoverage[$srcAbspath] as $lineNumber => $tests) {
+                switch ($granularity) {
+                    case Granularity::FILE:
+                        foreach ($tests as $test) {
+                            $fqdnTestsToRunBySuite[$test] = $test;
+                        }
+                        break;
+                    case Granularity::LINE:
+                        if ($this->isNumberInRanges($lineNumber, $diffFilesLineRanges[$srcAbspath])) {
+                            /**
+                             * @var string $test is the FQDN string of the test for this line number
+                             */
                             foreach ($tests as $test) {
-                                $fqdnTestsToRunBySuite[$suiteName][$test] = $test;
+                                $fqdnTestsToRunBySuite[$test] = $test;
                             }
-                            break;
-                        case Granularity::LINE:
-                            if ($this->isNumberInRanges($lineNumber, $diffFilesLineRanges[$srcAbspath])) {
-                                /**
-                                 * @var string $test is the FQDN string of the test for this line number
-                                 */
-                                foreach ($tests as $test) {
-                                    $fqdnTestsToRunBySuite[$suiteName][$test] = $test;
-                                }
-                            }
-                            break;
-                    }
+                        }
+                        break;
                 }
             }
         }
@@ -168,6 +217,8 @@ class DiffFilter
     }
 
     /**
+     * Determine is a given number within in any of the given ranges.
+     *
      * @param int $number
      * @param array<array{0:int, 1:int}> $ranges
      */
@@ -182,52 +233,73 @@ class DiffFilter
     }
 
     /**
+     * Check if a number is within a given range, inclusive of the endpoints.
+     *
      * @param int $number
-     * @param array{0:int, 1:int}  $range
+     * @param array{0:int, 1:int} $range
      */
     protected function isNumberInRange(int $number, array $range): bool
     {
-        // TODO: check the numbers are in order.
+        sort($range);
         return $number >= $range[0] && $number <= $range[1];
     }
 
-    private function fqdnToCodeceptionFriendlyShortname(string $test): string
+    /**
+     * Remove the namespace from the test name and separate the class name and method with a single colon.
+     *
+     * `BrianHenryIE\PhpDiffTest\DiffLinesTest::testGetChangedFiles` -> `DiffLinesTest:testGetChangedFiles`
+     *
+     * `preg_replace('/.*\\(.*)::(.*)/', '$1:$2', $fqdnTestMethod)`
+     *
+     * @param string $fqdnTestMethod
+     */
+    private function fqdnToCodeceptionFriendlyShortname(string $fqdnTestMethod): string
     {
-        list( $testFqdnClassName, $testMethod ) = explode('::', $test);
+        list( $testFqdnClassName, $testMethod ) = explode('::', $fqdnTestMethod);
         $parts = explode('\\', $testFqdnClassName);
         $shortClass = array_pop($parts);
         return $shortClass . ':' . $testMethod;
     }
 
     /**
-     * $param array<string, array<int[]>> $diffLinesPhp Index: filepath, array of pairs (ranges) of changed lines, already filtered to .php files.
+     * Get a list of test methods that were changed in the diff.
+     *
+     * Given the changes lines in a diff, determines if any of those lines intersect with test methods.
+     *
+     * Shortcoming: if a data provider is given more cases but the test method itself is not changed, it will not
+     * be included.
+     *
+     * @param array<string, array<array{0:int,1:int}>> $diffLinesPhp Index: filepath, array of ranges of changed lines.
      * @return array<string> FQDN test cases
      */
-    private function getDiffTests(array $diffLinesPhp): array
+    private function getTestsChangedInDiff(array $diffLinesPhp): array
     {
-        $testFilesLines = array_filter(
-            $diffLinesPhp,
-            function (string $filePath): bool {
-                return substr($filePath, -8) === 'Test.php';
-            },
-            ARRAY_FILTER_USE_KEY
-        );
+        $testFilesFilter = fn(string $filePath): bool => str_ends_with($filePath, 'Test.php');
+
+        $testFilesLines = array_filter($diffLinesPhp, $testFilesFilter, ARRAY_FILTER_USE_KEY);
 
         $tests = [];
 
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+
         foreach ($testFilesLines as $filePath => $lines) {
             if (!is_readable($filePath)) {
-                // The codecoverage report is out of sync with the branch. E.g. it was generated on a different branch.
+                // The code coverage report is out of sync with the branch. E.g. it was generated on a different branch.
                 continue;
             }
 
-
             // Parse the PHP file and extract the test method names.
-
             $code = file_get_contents($filePath);
+            if (false === $code) {
+                // The file is not readable, skip it.
+                continue;
+            }
 
-            $parser = (new ParserFactory())->createForNewestSupportedVersion();
             $ast = $parser->parse($code);
+            if (is_null($ast)) {
+                // The file could not be parsed, skip it.
+                continue;
+            }
 
             $traverser = new NodeTraverser();
             $visitor = new TestMethodRecorderVisitor();
