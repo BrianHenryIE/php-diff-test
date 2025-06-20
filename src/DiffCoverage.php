@@ -8,115 +8,86 @@ namespace BrianHenryIE\PhpDiffTest;
 
 use Exception;
 use SebastianBergmann\CodeCoverage\CodeCoverage;
-use SebastianBergmann\CodeCoverage\Data\ProcessedCodeCoverageData;
 use SebastianBergmann\CodeCoverage\Driver\WriteOperationFailedException;
 use SebastianBergmann\CodeCoverage\Driver\XdebugDriver;
 use SebastianBergmann\CodeCoverage\Filter;
 use SebastianBergmann\CodeCoverage\Report\PHP as PhpReportWriter;
+use stdClass;
 
 class DiffCoverage
 {
     protected DiffLines $diffLines;
-    protected PhpReportWriter $reportWriter;
 
     /**
-     * @param ?DiffLines $diffLines
-     * @param ?PhpReportWriter $reportWriter
+     * @var PhpReportWriter|stdClass $reportWriter
+     */
+    protected $reportWriter;
+
+    /**
+     * @param string $cwd Current working directory, with trailing slash.
+     * @param DiffLines $diffLines
+     * @param PhpReportWriter|stdClass|null $reportWriter
      * @throws Exception
      */
     public function __construct(
-        protected string $cwd, // Current working directory, with trailing slash.
-        ?DiffLines $diffLines = null,
-        ?PhpReportWriter $reportWriter = null,
+        protected string $cwd,
+        DiffLines $diffLines,
+        PhpReportWriter|stdClass|null $reportWriter = null,
     ) {
-        $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
+        $this->diffLines = $diffLines;
         $this->reportWriter = $reportWriter ?? new PhpReportWriter();
     }
 
     /**
+     * @param string[] $coverageFilePaths List of absolute or relative file paths to coverage files to merge.
+     * @param string $diffFrom SHA or compatible reference to diff from.
+     * @param string $diffTo SHA or compatible reference to diff to.
+     * @param string $outputFile Full filepath to write the filtered coverage object to.
+     * @throws Exception
+     *
      * @throws WriteOperationFailedException
      */
     public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo, string $outputFile): void
     {
+        /** @var ?CodeCoverage $oldCoverage */
+        $oldCoverage = $this->mergeCoverageFiles($coverageFilePaths);
 
-        // Merge the coverage files
-        /** @var CodeCoverage $oldCoverage */
-        $oldCoverage = array_reduce(
-            $coverageFilePaths,
-            function (?CodeCoverage $mergedCoverage, string $coverageFilePath): CodeCoverage {
-                try {
-                    $coverage = include $coverageFilePath;
-                } catch (Exception $error) {
-                    throw new Exception("Coverage file: " . $coverageFilePath . " probably created with an incompatible PHPUnit version.");
-                }
-
-                if (is_null($mergedCoverage)) {
-                    return $coverage;
-                }
-
-                $mergedCoverage->merge($coverage);
-                return $mergedCoverage;
-            },
-            null
-        );
+        if (is_null($oldCoverage)) {
+            throw new Exception("No `CodeCoverage` objects found in the provided files.");
+        }
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines(
             diffFrom: $diffFrom,
             diffTo: $diffTo,
-            filePathFilter: fn($filepath) => str_ends_with($filepath, '.php')
+            // Filter to only include PHP files that are not test files and not in the tests' directory.
+            filePathFilter: fn($filepath) => $this->isNonTestPhpFile($filepath)
         );
 
-        /**
-         * List of file paths contained in the diff, with files in the /tests directory removed.
-         *
-         * @var string[] $diffFilePaths
-         */
-        $diffFilePaths = array_filter(
-            array_keys($diffFilesLineRanges),
-            function (string $filepath): bool {
-                return ! str_starts_with($filepath, $this->cwd . 'tests');
-            }
-        );
+        $diffFilePaths = array_keys($diffFilesLineRanges);
 
+        $newCoverage = self::filterCoverage($oldCoverage, $diffFilePaths);
 
-        /** @var ProcessedCodeCoverageData $oldCoverageData */
-        $oldCoverageData = $oldCoverage->getData();
+        $outputFilepath = $this->prepareOutputPath($outputFile);
 
-        /** @var array<string, array> $lineCoverage Indexed by filepath */
-        $lineCoverage = $oldCoverageData->lineCoverage();
+        $this->reportWriter->process($newCoverage, $outputFilepath);
+    }
 
-        foreach ($lineCoverage as $filepath => $lines) {
-            if (!in_array($filepath, $diffFilePaths, true)) {
-                unset($lineCoverage[$filepath]);
-            }
-            unset($lines);
-        }
+    protected function isNonTestPhpFile(string $filePath): bool
+    {
+        return str_ends_with($filePath, '.php')
+            && !str_ends_with($filePath, 'Test.php')
+            && !str_starts_with($filePath, $this->cwd . 'tests');
+    }
 
-
-        $filter = new Filter();
-        $filter->includeFiles($diffFilePaths);
-        $xdebugDriver = new XdebugDriver(
-            $filter
-        );
-        if ($oldCoverage->collectsBranchAndPathCoverage()) {
-            $xdebugDriver->enableBranchAndPathCoverage();
-        } else {
-            $xdebugDriver->disableBranchAndPathCoverage();
-        }
-        $newCoverage = new CodeCoverage(
-            $xdebugDriver,
-            $filter
-        );
-        unset($xdebugDriver, $filter);
-
-        $newCoverageData = $newCoverage->getData();
-        $newCoverageData->setLineCoverage($lineCoverage);
-        $newCoverage->setData($newCoverageData);
-        $newCoverage->setTests($oldCoverage->getTests());
-
-        unset($oldCoverage, $newCoverageData, $lineCoverage);
-
-        $outputFilepath = str_starts_with('/', $outputFile)
+    /**
+     * Takes an absolute or relative filepath, ensures the directory exists, and returns an absolute path.
+     *
+     * @param string $outputFile
+     * @throws Exception
+     */
+    protected function prepareOutputPath(string $outputFile): string
+    {
+        $outputFilepath = str_starts_with($outputFile, '/')
             ? $outputFile
             : $this->cwd . $outputFile;
 
@@ -126,6 +97,100 @@ class DiffCoverage
             }
         }
 
-        $this->reportWriter->process($newCoverage, $outputFilepath);
+        return $outputFilepath;
+    }
+
+    /**
+     * @param string[] $coverageFilePaths
+     * @throws Exception
+     */
+    protected function mergeCoverageFiles(array $coverageFilePaths): ?CodeCoverage
+    {
+        return array_reduce(
+            $coverageFilePaths,
+            function (?CodeCoverage $mergedCoverage, string $coverageFilePath): ?CodeCoverage {
+                try {
+                    $coverage = (fn() => include $coverageFilePath )() ?: null;
+                } catch (Exception $exception) {
+                    throw new Exception(
+                        sprintf(
+                            "Coverage file: %s probably created with an incompatible PHPUnit version.",
+                            $coverageFilePath
+                        )
+                    );
+                }
+
+                if ($mergedCoverage instanceof CodeCoverage && $coverage instanceof CodeCoverage) {
+                    $mergedCoverage->merge($coverage);
+                    return $mergedCoverage;
+                }
+
+                return $mergedCoverage ?? $coverage ?? null;
+            }
+        );
+    }
+
+    /**
+     * Creates a new CodeCoverage object filtered to only files that are in the provided list.
+     *
+     * Works with full file paths or relative paths (matching the end of the file path).
+     *
+     * @param CodeCoverage $oldCoverage An existing CodeCoverage object.
+     * @param string[] $coveredFilesList List of files to narrow the report to contain.
+     */
+    public static function filterCoverage(CodeCoverage $oldCoverage, array $coveredFilesList): CodeCoverage
+    {
+        if (empty($coveredFilesList)) {
+            return $oldCoverage;
+        }
+
+        $data = $oldCoverage->getData();
+
+        $lineCoverage = $data->lineCoverage();
+
+        $filteredLineCoverage = [];
+        foreach ($lineCoverage as $filepath => $lineData) {
+            // Do full filepath match first.
+            if (in_array($filepath, $coveredFilesList)) {
+                $filteredLineCoverage[$filepath] = $lineData;
+                continue;
+            }
+            // Then check for relative path.
+            foreach ($coveredFilesList as $coveredFilePath) {
+                if (str_ends_with($filepath, $coveredFilePath)) {
+                    $filteredLineCoverage[$filepath] = $lineData;
+                    continue 2; // No need to check other covered files
+                }
+            }
+        }
+
+        $diffFilePaths = array_keys($filteredLineCoverage);
+
+        $filter = new Filter();
+        $filter->includeFiles($diffFilePaths);
+        // Would it be possible to edit the class with reflection instead?
+        // This requires XDEBUG_MODE=coverage
+        // In tests, XDEBUG_MODE=coverage,debug
+        $xdebugDriver = new XdebugDriver(
+            $filter
+        );
+        if ($oldCoverage->collectsBranchAndPathCoverage()) {
+            $xdebugDriver->enableBranchAndPathCoverage();
+        } else {
+            $xdebugDriver->disableBranchAndPathCoverage();
+        }
+
+        $newCoverage = new CodeCoverage(
+            $xdebugDriver,
+            $filter
+        );
+        unset($xdebugDriver, $filter);
+
+        $newCoverageData = $newCoverage->getData();
+        $newCoverageData->setLineCoverage($filteredLineCoverage);
+        $newCoverage->setData($newCoverageData);
+        $newCoverage->setTests($oldCoverage->getTests());
+
+        return $newCoverage;
     }
 }
