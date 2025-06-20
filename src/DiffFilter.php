@@ -21,7 +21,7 @@ class DiffFilter
         $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
     }
 
-    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo, Granularity $granularity): void
+    public function execute(array $coverageFilePaths, string $diffFrom, string $diffTo, Granularity $granularity = Granularity::LINE): string
     {
         // Search $projectRootDir and two levels of tests for *.cov
         // If there are corresponding *.suite.yml, treat them as Codeception
@@ -63,9 +63,8 @@ class DiffFilter
                 );
             }
 
-            echo ':' . implode('|', array_unique(array_merge(...array_values($classnameTestsToRunBySuite))));
+            return ':' . implode('|', array_unique(array_merge(...array_values($classnameTestsToRunBySuite))));
         } else {
-            echo str_replace(
             $fqdnTests = array_unique(
                 array_map(
                     // Tests with data providers are indexed by test_name#dataprovider which has caused problems,
@@ -75,6 +74,7 @@ class DiffFilter
                     array_values(array_merge($fqdnDiffTests, ...array_values($fqdnTestsToRunBySuite)))
                 )
             );
+            return str_replace(
                 '\\',
                 '\\\\',
                 implode(
