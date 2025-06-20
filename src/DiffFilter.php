@@ -230,40 +230,7 @@ class DiffFilter
             $ast = $parser->parse($code);
 
             $traverser = new NodeTraverser();
-            $visitor = new class extends NodeVisitorAbstract {
-                protected string $namespace;
-                protected string $class;
-                protected array $methods = [];
-
-                public function enterNode(\PhpParser\Node $node)
-                {
-
-                    if ($node instanceof Namespace_) {
-                        $this->namespace = $node->name->toString();
-                    }
-                    if ($node instanceof ClassLike) {
-                        /**
-                         * @see \PhpParser\Node\Stmt\Class_
-                         */
-                        if (!is_null($node->name)) {
-                            $this->class = $node->name->toString();
-                        }
-                    }
-                    if ($node instanceof ClassMethod) {
-                        if (str_starts_with($node->name->toString(), 'test')) {
-                            $this->methods[$this->namespace . '\\' . $this->class . '::' . $node->name->toString()]
-                                = [$node->getStartLine(), $node->getEndLine()];
-                        }
-                    }
-
-                    return $node;
-                }
-
-                public function getMethods(): array
-                {
-                    return $this->methods;
-                }
-            };
+            $visitor = new TestMethodRecorderVisitor();
             $traverser->addVisitor($visitor);
             $traverser->traverse($ast);
 
