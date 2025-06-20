@@ -1,58 +1,66 @@
 <?php
 
 /**
+ * Given two commits or branches, returns an array of changed lines ranges in each file.
  *
+ * [filepath => [[start, end], ...]
+ *
+ * Uses {see https://github.com/gitonomy/gitlib}.
  * Consider {@see https://github.com/sebastianbergmann/diff} which is used by PHPUnit so already part of the project.
  */
 
 namespace BrianHenryIE\PhpDiffTest;
 
 use Exception;
+use Gitonomy\Git\Diff\File;
 use Gitonomy\Git\Repository;
+use SplFileObject;
 
 class DiffLines
 {
     protected Repository $repository;
 
     public function __construct(
-        protected string $cwd, // With trailingslash.
+        protected string $cwd, // With trailing slash.
         ?Repository $repository = null,
     ) {
         $this->repository = $repository ?? new Repository($cwd);
     }
 
     /**
-     * @param string $projectRootDir Path to the Git repository.
-     * @param ?string $diff Branch or commit hash to diff against.
-     * @return array<string, array<int[]>> Index: filepath, array of pairs (ranges) of changed lines, filtered to .php files.
+     * @param string $diffFrom Branch or commit hash to diff against.
+     * @param string $diffTo Branch or commit hash to diff against.
+     * @param ?callable $filePathFilter Optional filter function to apply to file paths.
+     * @return array<string, array<array{0:int, 1:int}>> Index: filepath, array of pairs (ranges) of changed lines.
      * @throws Exception
      */
-    public function getChangedLines(string $diffFrom = 'main', string $diffTo = 'HEAD~0', ?\Closure $filePathFilter = null): array
-    {
+    public function getChangedLines(
+        string $diffFrom = 'main',
+        string $diffTo = 'HEAD~0',
+        ?callable $filePathFilter = null
+    ): array {
 
         $changedFilesAll = $this->getChangedFiles($this->repository, $diffFrom, $diffTo);
-        $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changedFilesAll);
+
+        // A `$changedFile` will be a string for untracked files, or an instance of `File` for tracked files.
+        $removeDeleteFilesFilter = fn ($changedFile) => !($changedFile instanceof File) || !$changedFile->isDeletion();
+
+        // Remove deleted files from the list.
+        $changedFiles = array_filter($changedFilesAll, $removeDeleteFilesFilter);
+
+        $diffFilesLines = $this->getChangedLinesForFiles($this->cwd, $changedFiles);
 
         return $filePathFilter
             ? array_filter($diffFilesLines, $filePathFilter, ARRAY_FILTER_USE_KEY)
             : $diffFilesLines;
     }
 
-
-    public function getChangedLinesForNewTests(string $diffFrom = 'main', string $diffTo = 'HEAD~0'): array
-    {
-
-        return $this->getChangedLines($diffFrom, $diffTo, function (string $filePath): bool {
-            return substr($filePath, -8) === 'Test.php';
-        });
-    }
-
     /**
      * Extract the changed lines for each file from the git diff output
      *
-     * @param array<string|\Gitonomy\Git\Diff\File> $files
+     * @param array<string|File> $files
      *
-     * @return array<string, array<int[]>> Index: filename, array of pairs of changed lines.
+     * @return array<string, array<array{0:int,1:int}>> Index: filename, array of pairs of changed lines.
      */
     protected function getChangedLinesForFiles(string $projectRootDir, array $files): array
     {
@@ -60,7 +68,7 @@ class DiffLines
         $fileLineChangesRanges = [];
 
         foreach ($files as $file) {
-            $pathIndex = $file instanceof \Gitonomy\Git\Diff\File
+            $pathIndex = $file instanceof File
                 ? $projectRootDir . $file->getName()
                 : $projectRootDir . $file;
 
@@ -70,7 +78,7 @@ class DiffLines
 
             $fileLineChangesRanges[$pathIndex] = array_merge(
                 $fileLineChangesRanges[$pathIndex],
-                $file instanceof \Gitonomy\Git\Diff\File
+                $file instanceof File
                                 ? $this->getChangedLinesPerFile($file, $pathIndex)
                                 : [[ 0, $this->getNumberOfLinesInAFile($pathIndex) ]]
             );
@@ -90,11 +98,11 @@ class DiffLines
     }
 
     /**
-     * @param \Gitonomy\Git\Diff\File $file
+     * @param File $file
      * @param string $pathIndex The full file path.
      * @return array<int[]>
      */
-    protected function getChangedLinesPerFile(\Gitonomy\Git\Diff\File $file, string $pathIndex): array
+    protected function getChangedLinesPerFile(File $file, string $pathIndex): array
     {
         $fileLineChangesRanges = [];
         foreach ($file->getChanges() as $fileChange) {
@@ -115,16 +123,22 @@ class DiffLines
     }
 
     /**
-     * Returns a list of files which are within the diff based on the current branch
+     * Returns a list of all files which are within the diff of the two references.
      *
-     * Get a list of changed files (not including deleted files)
+     * Includes untracked, pending, staged files. Includes deleted files.
      *
-     * @param string $projectRootDir
-     * @param string|null $diff
-     * @return array<string|\Gitonomy\Git\Diff\File>
+     * TODO: If $diffTo is not HEAD~0, we probably shouldn't included untracked, pending, staged files.
+     *
+     * @param Repository $repository
+     * @param string $diffFrom
+     * @param string $diffTo
+     * @return array<string|File>
      */
-    protected function getChangedFiles(Repository $repository, string $diffFrom = 'main', string $diffTo = 'HEAD~0'): array
-    {
+    protected function getChangedFiles(
+        Repository $repository,
+        string $diffFrom = 'main',
+        string $diffTo = 'HEAD~0'
+    ): array {
 
         $staged = $repository->getWorkingCopy()->getDiffStaged();
         $pending = $repository->getWorkingCopy()->getDiffPending();
@@ -133,22 +147,24 @@ class DiffLines
         // Contains only the commited changes.
         $diff = $repository->getDiff("$diffFrom..$diffTo");
 
-        // TODO: If $diffTo is not HEAD~0, we probably shouldn't included untracked, pending, staged files.
-
-        $changes = array_merge(
+        return array_merge(
             $diff->getFiles(),
             $staged->getFiles(),
             $pending->getFiles(),
             $untrackedFiles,
         );
-
-        return $changes;
     }
 
-
+    /**
+     * Untracked files are not part of the diff, so we need to count the lines in the file to say the range is
+     * [0, numberOfLinesInFile].
+     */
     protected function getNumberOfLinesInAFile(string $path): int
     {
-        $file = new \SplFileObject($path, 'r');
+        if (!is_readable($path)) {
+            return PHP_INT_MAX;
+        }
+        $file = new SplFileObject($path, 'r');
         $file->seek(PHP_INT_MAX);
 
         return $file->key() - 1;
