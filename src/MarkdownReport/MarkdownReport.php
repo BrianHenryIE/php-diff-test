@@ -29,18 +29,6 @@ class MarkdownReport
         $this->templatePath  = __DIR__ . '/MarkdownTemplate/';
     }
 
-    public function save(
-        CodeCoverage $coverage,
-        string $outputPath,
-        ?string $baseUrl, // The URL to prefix to each path
-        array $coveredFilesList = [] // List of files to include in the report, or empty for all files
-    ): void {
-        file_put_contents(
-            $outputPath,
-            $this->process($coverage, $baseUrl, $coveredFilesList)
-        );
-    }
-
     /**
      * @param CodeCoverage $coverage
      * @param string|null $baseUrl
@@ -49,6 +37,7 @@ class MarkdownReport
      */
     public function process(
         CodeCoverage $coverage,
+        string $projectRoot, // The file path string to remove before prepending the base URL
         ?string $baseUrl, // The URL to prefix to each path
         array $coveredFilesList = [] // List of files to include in the report, or null for all files
     ): string {
@@ -61,8 +50,9 @@ class MarkdownReport
         $date   = date('D, M j, Y, G:i:s T');
 
         $directory = new Directory(
-            $basePath,
+            $projectRoot,
             $baseUrl,
+            $basePath,
             $this->templatePath,
             $this->generator,
             $date,

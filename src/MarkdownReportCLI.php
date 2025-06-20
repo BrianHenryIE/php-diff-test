@@ -126,7 +126,17 @@ class MarkdownReportCLI extends Command
         $coveredFilesList = array_map('trim', explode(',', $coveredFilesList));
 
         try {
-            $this->markdownReport->save($coverage, $baseUrl, $outputFile, $coveredFilesList);
+            $projectRoot = getcwd() . '/';
+            $result = $this->markdownReport->process($coverage, $projectRoot, $baseUrl, $coveredFilesList);
+            if ($outputFile) {
+                file_put_contents(
+                    $outputFile,
+                    $result
+                );
+            } else {
+                $output->write($result);
+            }
+
             return Command::SUCCESS;
         } catch (Exception $exception) {
             $output->writeln(sprintf('<error>%s</error>', $exception->getMessage()));
