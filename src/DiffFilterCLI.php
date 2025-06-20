@@ -8,6 +8,7 @@
 
 namespace BrianHenryIE\PhpDiffTest;
 
+use Exception;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArgvInput;
 use Symfony\Component\Console\Input\InputArgument;
@@ -36,7 +37,7 @@ class DiffFilterCLI extends Command
     /**
      * @param ?string $name Symfony parameter.
      * @param ?DiffFilter $diffFilter
-     * @throws \Exception
+     * @throws Exception
      */
     public function __construct(
         ?string $name = 'difffilter',
@@ -53,14 +54,15 @@ class DiffFilterCLI extends Command
      * Ensure we have the object property for the working directory, with trailing slash.
      *
      * @used-by DiffCoverage::__construct()
-     * @see getcwd()
+     * @see     getcwd()
+     * @throws Exception
      */
     protected function initCwd(): void
     {
         $cwd = getcwd();
 
         if ($cwd === false) {
-            throw new \Exception('Could not get current working directory.');
+            throw new Exception('Could not get current working directory.');
         }
 
         $this->cwd = rtrim($cwd, '/\\') . '/';
@@ -69,6 +71,7 @@ class DiffFilterCLI extends Command
     /**
      * @used-by Command::run()
      * @see Command::configure()
+     * @return void
      */
     protected function configure()
     {
@@ -106,12 +109,13 @@ class DiffFilterCLI extends Command
 
     /**
      * @used-by Command::run()
-     * @see Command::execute()
-     *
      * @param InputInterface $input {@see ArgvInput}
      * @param OutputInterface $output
      *
      * @return int Shell exit code.
+     * @throws Exception
+     * @see     Command::execute()
+     *
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
@@ -131,15 +135,16 @@ class DiffFilterCLI extends Command
         $coverageFilePaths = array_map(function (string $inputFile): string {
             $path = str_starts_with($inputFile, $this->cwd) ? $inputFile : $this->cwd . $inputFile;
             if (!is_readable($path)) {
-                throw new \Exception("File not found or not readable: $path");
+                throw new Exception("File not found or not readable: $path");
             }
             return $path;
         }, $inputFiles);
 
         try {
-            $this->diffFilter->execute($coverageFilePaths, $diffFrom, $diffTo, $granularity);
+            $result = $this->diffFilter->execute($coverageFilePaths, $diffFrom, $diffTo, $granularity);
+            $output->write($result);
             return Command::SUCCESS;
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $output->writeln(sprintf('<error>%s</error>', $exception->getMessage()));
             return Command::FAILURE;
         }
@@ -147,6 +152,9 @@ class DiffFilterCLI extends Command
 
     /**
      * Search $projectRootDir and two levels of tests for *.cov
+     *
+     * If there are corresponding *.suite.yml, treat them as Codeception
+     * otherwise treat them as PhpUnit.
      *
      * @param string $projectRootDir As earlier determined from `getcwd()`.
      *
