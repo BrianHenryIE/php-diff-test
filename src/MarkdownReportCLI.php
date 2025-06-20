@@ -63,6 +63,8 @@ class MarkdownReportCLI extends Command
 
         // To link to the file in a PR at the last commit:
         // https://github.com/<company/project>/blob/<sha>/<path/to/file.php>
+        // Use %s in the string to replace with the file path. Or omit it and the path will be appended.
+        // The path is relative to the project root, currently the working directory.
          $this->addOption(
              'base-url',
              null,
@@ -124,6 +126,10 @@ class MarkdownReportCLI extends Command
 
         // At this point, we don't care that the files exits or not. We will check str_ends_with() to filter later.
         $coveredFilesList = array_map('trim', explode(',', $coveredFilesList));
+
+        if ($baseUrl && !str_contains($baseUrl, '%s')) {
+            $baseUrl = $baseUrl . '%s';
+        }
 
         try {
             $projectRoot = getcwd() . '/';
