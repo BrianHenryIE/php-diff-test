@@ -65,9 +65,16 @@ class DiffFilter
 
             echo ':' . implode('|', array_unique(array_merge(...array_values($classnameTestsToRunBySuite))));
         } else {
-            $fqdnTests = array_unique(array_merge($fqdnDiffTests, ...array_values($fqdnTestsToRunBySuite)));
-            // phpunit --filter="BrianHenryIE\\\MoneroRpc\\\DaemonUnitTest::testOnGetBlockHash"
             echo str_replace(
+            $fqdnTests = array_unique(
+                array_map(
+                    // Tests with data providers are indexed by test_name#dataprovider which has caused problems,
+                    // so let's just run those tests with all the values
+                    fn($testName) => preg_split('/#/', $testName)[0] ?: $testName,
+                    // array_values here just to make it easier to read the output.
+                    array_values(array_merge($fqdnDiffTests, ...array_values($fqdnTestsToRunBySuite)))
+                )
+            );
                 '\\',
                 '\\\\',
                 implode(
