@@ -18,12 +18,17 @@ use SplFileObject;
 
 class DiffLines
 {
-    protected Repository $repository;
+    /** @var string $cwd */
+    protected $cwd;
+
+    /** @var Repository $repository */
+    protected $repository;
 
     public function __construct(
-        protected string $cwd, // With trailing slash.
+        string $cwd, // With trailing slash.
         ?Repository $repository = null,
     ) {
+        $this->cwd = $cwd;
         $this->repository = $repository ?? new Repository($cwd);
     }
 

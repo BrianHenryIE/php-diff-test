@@ -24,15 +24,19 @@ class DiffFilterCLI extends Command
     /**
      * Tool which merges coverage files, determines lines in diff, calculates tests which cover those lines,
      * and prints out a PHPUnit filter.
+     *
+     * @var DiffFilter $diffFilter
      */
-    protected DiffFilter $diffFilter;
+    protected $diffFilter;
 
     /**
      * Current working directory, with trailing slash.
      *
      * @see getcwd()
+     *
+     * @var string $cwd
      */
-    protected string $cwd;
+    protected $cwd;
 
     /**
      * @param ?string $name Symfony parameter.

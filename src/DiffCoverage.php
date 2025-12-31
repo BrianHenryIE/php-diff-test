@@ -16,7 +16,11 @@ use stdClass;
 
 class DiffCoverage
 {
-    protected DiffLines $diffLines;
+    /** @var string $cwd */
+    protected $cwd;
+
+    /** @var DiffLines  */
+    protected $diffLines;
 
     /**
      * @var PhpReportWriter|stdClass $reportWriter
@@ -30,10 +34,11 @@ class DiffCoverage
      * @throws Exception
      */
     public function __construct(
-        protected string $cwd,
+        string $cwd,
         DiffLines $diffLines,
         PhpReportWriter|stdClass|null $reportWriter = null,
     ) {
+        $this->cwd = $cwd;
         $this->diffLines = $diffLines;
         $this->reportWriter = $reportWriter ?? new PhpReportWriter();
     }
@@ -57,10 +62,12 @@ class DiffCoverage
         }
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines(
-            diffFrom: $diffFrom,
-            diffTo: $diffTo,
+            /** diffFrom: */            $diffFrom,
+            /**  diffTo: */  $diffTo,
             // Filter to only include PHP files that are not test files and not in the tests' directory.
-            filePathFilter: fn($filepath) => $this->isNonTestPhpFile($filepath)
+            /** filePathFilter: */  function ($filepath) {
+                return $this->isNonTestPhpFile($filepath);
+            }
         );
 
         $diffFilePaths = array_keys($diffFilesLineRanges);

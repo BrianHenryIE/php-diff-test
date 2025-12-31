@@ -19,15 +19,17 @@ use PhpParser\NodeVisitorAbstract;
 
 class TestMethodRecorderVisitor extends NodeVisitorAbstract
 {
-    protected string $namespace;
-    protected string $class;
+    /** @var string $namespace */
+    protected $namespace;
+    /** @var string $class */
+    protected $class;
 
     /**
      * The fqdn test methods, with the range indicating start and end lines.
      *
      * @var array<string, array{0:int, 1:int}>
      */
-    protected array $methods = [];
+    protected $methods = [];
 
     public function enterNode(Node $node)
     {

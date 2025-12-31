@@ -16,9 +16,12 @@ use SebastianBergmann\CodeCoverage\Report\Thresholds;
 
 class MarkdownReport
 {
-    private readonly string $templatePath;
-    private readonly string $generator;
-    private readonly Thresholds $thresholds;
+    /** @var string $templatePath */
+    private $templatePath;
+    /** @var string $generator */
+    private $generator;
+    /** @var Thresholds $thresholds */
+    private $thresholds;
 
     public function __construct(
         string $generator = '',

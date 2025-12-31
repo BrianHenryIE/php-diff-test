@@ -23,15 +23,18 @@ class DiffCoverageCLI extends Command
 {
     /**
      * Tool which merges coverage files, determines files in diff, and filters and writes coverage.
+     *
+     * @var DiffCoverage
      */
-    protected DiffCoverage $diffCoverage;
+    protected $diffCoverage;
 
     /**
      * Current working directory, with trailing slash.
      *
      * @see getcwd()
+     * @var string
      */
-    protected string $cwd;
+    protected $cwd;
 
     /**
      * @param ?string $name Symfony parameter.

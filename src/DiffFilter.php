@@ -19,13 +19,18 @@ class DiffFilter
 {
     /**
      * Utility to determine the changed lines.
+     * @var DiffLines
      */
-    private DiffLines $diffLines;
+    private $diffLines;
+
+    /** @var string */
+    protected $cwd;
 
     public function __construct(
-        protected string $cwd, // Repository working directory, with trailing slash.
-        ?DiffLines $diffLines = null,
+        $cwd, // Repository working directory, with trailing slash.
+        ?DiffLines $diffLines = null
     ) {
+        $this->cwd = $cwd;
         $this->diffLines = $diffLines ?? new DiffLines($this->cwd);
     }
 
@@ -56,7 +61,9 @@ class DiffFilter
             }
         }
 
-        $phpFilesFilter = fn($filePath) => str_ends_with($filePath, '.php');
+        $phpFilesFilter = function ($filePath) {
+            str_ends_with($filePath, '.php');
+        };
 
         $diffFilesLineRanges = $this->diffLines->getChangedLines(
             $diffFrom,
@@ -69,12 +76,14 @@ class DiffFilter
         $fqdnTestsToRunBySuite = $this->getFqdnTestsToRunBySuite(
             $coverageSuiteNamesFilePaths,
             $diffFilesLineRanges,
-            $granularity,
+            $granularity
         );
 
         // Tests with data providers are indexed by test_name#dataprovider which has caused problems,
         // so let's just run those tests with all the values
-        $removeDataProviderIndex = fn(string $testName) => explode('#', $testName)[0];
+        $removeDataProviderIndex = function (string $testName) {
+            return explode('#', $testName)[0];
+        };
 
         if ($this->isCodeceptionRun($this->cwd, array_keys($coverageSuiteNamesFilePaths))) {
             $classnameTestsToRunBySuite = array();
@@ -274,7 +283,9 @@ class DiffFilter
      */
     private function getTestsChangedInDiff(array $diffLinesPhp): array
     {
-        $testFilesFilter = fn(string $filePath): bool => str_ends_with($filePath, 'Test.php');
+        $testFilesFilter = function (string $filePath): bool {
+            return str_ends_with($filePath, 'Test.php');
+        };
 
         $testFilesLines = array_filter($diffLinesPhp, $testFilesFilter, ARRAY_FILTER_USE_KEY);
 
