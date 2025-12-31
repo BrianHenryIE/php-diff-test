@@ -4,8 +4,13 @@
          bootstrap="tests/bootstrap.php">
     <testsuites>
         <testsuite name="tests">
-            <directory>tests/unit</directory>
+            <directory>tests</directory>
         </testsuite>
 
     </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">./src</directory>
+        </include>
+    </source>
 </phpunit>

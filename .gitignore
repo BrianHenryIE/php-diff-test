@@ -3,3 +3,5 @@
 /vendor
 /.phpunit.result.cache
 /*.phar
+/tests/_reports
+/tests/Fixtures/php.cov.deserialized.php

@@ -4,9 +4,13 @@
 
     <description>PHPCS configuration file.</description>
 
+    <rule ref="PSR12"/>
+
     <file>src</file>
     <file>tests</file>
 
-    <rule ref="PSR12"/>
+    <exclude-pattern>/tests/_reports/</exclude-pattern>
+    <exclude-pattern>/tests/Fixtures/</exclude-pattern>
+    <exclude-pattern>/tests/_fixtures/</exclude-pattern>
 
 </ruleset>

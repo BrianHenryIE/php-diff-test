@@ -32,14 +32,44 @@
     "symfony/console": "^6.4"
   },
   "require-dev": {
-    "squizlabs/php_codesniffer": "*",
-    "phpstan/phpstan": "^1.9"
+    "mockery/mockery": "^1.6",
+    "phpstan/phpstan": "^1.9",
+    "squizlabs/php_codesniffer": "*"
   },
   "scripts": {
-    "lint": [
-      "vendor/bin/phpcbf || true",
-      "vendor/bin/phpcs || true",
-      "vendor/bin/phpstan analyse --memory-limit 1G"
+    "analyze": [
+      "phpstan analyse --memory-limit=-1 --verbose"
+    ],
+    "analyze-changes": [
+      "updated_files=$(echo $(git diff --name-only `git merge-base origin/main HEAD` | grep php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpstan analyse --memory-limit=-1 $updated_files --verbose || true; else echo \"No modified php files for phpstan.\"; fi;"
+    ],
+    "analyze-changes-strict": [
+      "updated_files=$(echo $(git diff --name-only `git merge-base origin/main HEAD` | grep php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpstan analyse --memory-limit=-1 $updated_files --level 10 --verbose || true; else echo \"No modified php files for phpstan.\"; fi;"
+    ],
+    "cs-fix": [
+      "phpcbf || true",
+      "@cs"
+    ],
+    "cs": [
+      "phpcs || true",
+      "@analyze"
+    ],
+    "cs-strict": [
+      "phpcs || true",
+      "phpstan analyse --level max --memory-limit 1G"
+    ],
+    "cs-changes": [
+      "updated_files=$(echo $(git diff --name-only `git merge-base origin/master HEAD` | grep \\.php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpcbf $(echo $updated_files); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --memory-limit 1G; else echo \"No modified php files for phpstan.\"; fi;"
+    ],
+    "cs-changes-strict": [
+      "updated_files=$(echo $(git diff --name-only `git merge-base origin/master HEAD` | grep \\.php | tr '\\n' '\\0' | xargs -0 ls -1df 2>/dev/null)); if [ -n \"$updated_files\" ]; then phpcbf $(echo $updated_files); phpcs $(echo $updated_files); phpstan analyse $(echo $updated_files) --level max --memory-limit 1G; else echo \"No modified php files for phpstan.\"; fi;"
+    ],
+    "test-coverage": [
+      "Composer\\Config::disableProcessTimeout",
+      "if [ \"$XDEBUG_MODE\" != \"coverage\" ]; then echo \"Run with 'XDEBUG_MODE=coverage composer test-coverage'\"; exit 1; fi;",
+      "phpunit --coverage-text --coverage-html tests/_reports/html --coverage-clover tests/_reports/clover.xml --coverage-php tests/_reports/php.cov -d memory_limit=-1 --order-by=random",
+      "if [ $(command -v ./tools/phpcov) ]; then git diff main...head > /tmp/main.diff; ./tools/phpcov patch-coverage --path-prefix $(pwd) ./tests/_reports/php.cov /tmp/main.diff || true; fi;",
+      "# Run 'open ./tests/_reports/html/index.html' to view report."
     ]
   },
   "config": {
@@ -50,5 +80,8 @@
     "platform": {
       "php": "8.1"
     }
+  },
+  "scripts-descriptions": {
+    "test-coverage": "Run PHPUnit tests with coverage. Use 'XDEBUG_MODE=coverage composer test-coverage' to run, 'open ./tests/_reports/html/index.html' to view."
   }
 }
