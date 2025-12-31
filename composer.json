@@ -20,7 +20,7 @@
     "psr-4": {
       "BrianHenryIE\\PhpDiffTest\\": "tests"
     },
-    "classmap": ["tests"]
+    "classmap": ["tests"] 
   },
   "require": {
     "php": ">=7.2",
