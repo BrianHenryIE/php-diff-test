@@ -3,7 +3,7 @@
 namespace BrianHenryIE\PhpDiffTest;
 
 /**
- * @coversDefaultClass \BrianHenryIE\PhpDiffTest\DiffCoverage
+ * @coversDefaultClass \BrianHenryIE\PhpDiffTest\DiffFilterCLI
  */
 class DiffFilterCLITest extends \PHPUnit\Framework\TestCase
 {

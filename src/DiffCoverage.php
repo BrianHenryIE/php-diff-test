@@ -36,7 +36,7 @@ class DiffCoverage
     public function __construct(
         string $cwd,
         DiffLines $diffLines,
-        PhpReportWriter|stdClass|null $reportWriter = null,
+        $reportWriter = null
     ) {
         $this->cwd = $cwd;
         $this->diffLines = $diffLines;
@@ -117,22 +117,27 @@ class DiffCoverage
             $coverageFilePaths,
             function (?CodeCoverage $mergedCoverage, string $coverageFilePath): ?CodeCoverage {
                 try {
-                    $coverage = (fn() => include $coverageFilePath )() ?: null;
+                    $coverage = (function () use ($coverageFilePath) {
+                        include $coverageFilePath;
+                    })() ?: null;
+
+                    if ($mergedCoverage instanceof CodeCoverage && $coverage instanceof CodeCoverage) {
+                        $mergedCoverage->merge($coverage);
+                        return $mergedCoverage;
+                    }
+
+                    return $mergedCoverage ?? $coverage ?? null;
+
                 } catch (Exception $exception) {
                     throw new Exception(
                         sprintf(
                             "Coverage file: %s probably created with an incompatible PHPUnit version.",
                             $coverageFilePath
-                        )
+                        ),
+                        $exception->getCode(),
+                        $exception
                     );
                 }
-
-                if ($mergedCoverage instanceof CodeCoverage && $coverage instanceof CodeCoverage) {
-                    $mergedCoverage->merge($coverage);
-                    return $mergedCoverage;
-                }
-
-                return $mergedCoverage ?? $coverage ?? null;
             }
         );
     }

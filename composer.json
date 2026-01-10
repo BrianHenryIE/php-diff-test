@@ -20,7 +20,7 @@
     "psr-4": {
       "BrianHenryIE\\PhpDiffTest\\": "tests"
     },
-    "classmap": ["tests"] 
+    "classmap": ["tests"]
   },
   "require": {
     "php": ">=7.2",
@@ -32,6 +32,7 @@
     "symfony/console": "^4.4.49|^5.4.47|^6.5.30|^7.4.1|^8.0.1|*"
   },
   "require-dev": {
+    "misantron/dbunit": "*",
     "mockery/mockery": "*",
     "phpstan/phpstan": "*",
     "squizlabs/php_codesniffer": "*"
